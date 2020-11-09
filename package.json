@@ -3,24 +3,16 @@
   "version": "1.1.0",
   "description": "No dependency mini-library: unification, deep equivalence, deep cloning, logical solver.",
   "type": "module",
-  "module": "src/unify.js",
-  "main": "cjs/unify.js",
+  "module": "src/solve.js",
+  "main": "cjs/solve.js",
   "exports": {
     ".": {
-      "require": "./cjs/unify.js",
-      "default": "./src/unify.js"
+      "require": "./cjs/solve.js",
+      "default": "./src/solve.js"
     },
     "./*": {
       "require": "./cjs/*",
       "default": "./src/*"
-    },
-    "./env.js": {
-      "require": "./cjs/env.js",
-      "default": "./src/env.js"
-    },
-    "./unify.js": {
-      "require": "./cjs/unify.js",
-      "default": "./src/unify.js"
     },
     "./solve.js": {
       "require": "./cjs/solve.js",
@@ -38,68 +30,12 @@
       "require": "./cjs/solvers/gen.js",
       "default": "./src/solvers/gen.js"
     },
-    "./unifiers/matchConditions.js": {
-      "require": "./cjs/unifiers/matchConditions.js",
-      "default": "./src/unifiers/matchConditions.js"
-    },
-    "./unifiers/matchInstanceOf.js": {
-      "require": "./cjs/unifiers/matchInstanceOf.js",
-      "default": "./src/unifiers/matchInstanceOf.js"
-    },
-    "./unifiers/matchString.js": {
-      "require": "./cjs/unifiers/matchString.js",
-      "default": "./src/unifiers/matchString.js"
-    },
-    "./unifiers/matchTypeOf.js": {
-      "require": "./cjs/unifiers/matchTypeOf.js",
-      "default": "./src/unifiers/matchTypeOf.js"
-    },
-    "./unifiers/ref.js": {
-      "require": "./cjs/unifiers/ref.js",
-      "default": "./src/unifiers/ref.js"
-    },
-    "./utils/assemble.js": {
-      "require": "./cjs/utils/assemble.js",
-      "default": "./src/utils/assemble.js"
-    },
-    "./utils/clone.js": {
-      "require": "./cjs/utils/clone.js",
-      "default": "./src/utils/clone.js"
-    },
-    "./utils/deref.js": {
-      "require": "./cjs/utils/deref.js",
-      "default": "./src/utils/deref.js"
-    },
-    "./utils/preprocess.js": {
-      "require": "./cjs/utils/preprocess.js",
-      "default": "./src/utils/preprocess.js"
-    },
-    "./utils/replace.js": {
-      "require": "./cjs/utils/replace.js",
-      "default": "./src/utils/replace.js"
-    },
-    "./utils/walk.js": {
-      "require": "./cjs/utils/walk.js",
-      "default": "./src/utils/walk.js"
-    },
+    "./cjs": "./cjs/solve.js",
     "./cjs/*": "./cjs/*",
-    "./cjs/env.js": "./cjs/env.js",
-    "./cjs/unify.js": "./cjs/unify.js",
     "./cjs/solve.js": "./cjs/solve.js",
     "./cjs/solvers/async.js": "./cjs/solvers/async.js",
     "./cjs/solvers/asyncGen.js": "./cjs/solvers/asyncGen.js",
-    "./cjs/solvers/gen.js": "./cjs/solvers/gen.js",
-    "./cjs/unifiers/matchConditions.js": "./cjs/unifiers/matchConditions.js",
-    "./cjs/unifiers/matchInstanceOf.js": "./cjs/unifiers/matchInstanceOf.js",
-    "./cjs/unifiers/matchString.js": "./cjs/unifiers/matchString.js",
-    "./cjs/unifiers/matchTypeOf.js": "./cjs/unifiers/matchTypeOf.js",
-    "./cjs/unifiers/ref.js": "./cjs/unifiers/ref.js",
-    "./cjs/utils/assemble.js": "./cjs/utils/assemble.js",
-    "./cjs/utils/clone.js": "./cjs/utils/clone.js",
-    "./cjs/utils/deref.js": "./cjs/utils/deref.js",
-    "./cjs/utils/preprocess.js": "./cjs/utils/preprocess.js",
-    "./cjs/utils/replace.js": "./cjs/utils/replace.js",
-    "./cjs/utils/walk.js": "./cjs/utils/walk.js"
+    "./cjs/solvers/gen.js": "./cjs/solvers/gen.js"
   },
   "scripts": {
     "test": "node tests/tests.js",
@@ -114,15 +50,6 @@
     "url": "git://github.com/uhop/yopl.git"
   },
   "keywords": [
-    "deep",
-    "unification",
-    "equivalence",
-    "comparison",
-    "deep equivalence",
-    "clone",
-    "deep clone",
-    "deep cloning",
-    "traversing",
     "logic programming",
     "solver",
     "logic solver"
