@@ -1,4 +1,4 @@
-import {_} from '../env';
+import {_} from 'deep6/env';
 import {head, cut, fail, isBound} from './system.js';
 
 const comparable = {string: 1, number: 1};

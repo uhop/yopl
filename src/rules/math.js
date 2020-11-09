@@ -1,4 +1,4 @@
-import {_} from '../env';
+import {_} from 'deep6/env';
 import {head, cut} from './system.js';
 
 export const rules = {

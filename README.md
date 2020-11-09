@@ -3,17 +3,13 @@
 [npm-image]:      https://img.shields.io/npm/v/yopl.svg
 [npm-url]:        https://npmjs.org/package/yopl
 
-`yopl`: a no dependency mini-library that provides:
+`yopl`: an ES6 mini-library that provides:
 
-* Advanced deep equivalency for JavaScript structures.
-  * Extensible to accommodate custom objects.
-* Unification.
-  * Identifying and capturing object fragments.
-* Traversing objects.
-  * Extensible deep cloning.
 * Logic solvers.
   * Rule-based, logic programming style.
   * Both callback and generator styles are supported.
+
+It has only one dependency: [deep6](https://www.npmjs.com/package/deep6), which is a no-dependency library itself.
 
 # Introduction
 

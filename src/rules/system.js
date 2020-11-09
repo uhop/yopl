@@ -1,4 +1,4 @@
-import {_, isVariable} from '../env.js';
+import {_, isVariable} from 'deep6/env.js';
 
 // utilities
 
