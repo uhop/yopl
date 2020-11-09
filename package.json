@@ -1,6 +1,6 @@
 {
   "name": "yopl",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "No dependency mini-library: unification, deep equivalence, deep cloning, logical solver.",
   "type": "module",
   "module": "src/solve.js",
@@ -78,6 +78,6 @@
     ]
   },
   "dependencies": {
-    "deep6": "^1.1.0"
+    "deep6": "^1.1.1"
   }
 }

@@ -23,6 +23,7 @@ npm install --save yopl
 
 ## Release History
 
+- 1.1.1 *updated dependencies.*
 - 1.1.0 *[deep6](https://npmjs.org/package/deep6) was extracted from this package, and now used as a dependency.*
 - 1.0.1 *added the exports statement.*
 - 1.0.0 *the first 1.0 release.*
