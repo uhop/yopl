@@ -23,6 +23,7 @@ npm install --save yopl
 
 ## Release History
 
+- 1.1.4 *updated dependencies.*
 - 1.1.3 *updated dependencies.*
 - 1.1.2 *updated dependencies.*
 - 1.1.1 *updated dependencies.*
