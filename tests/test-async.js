@@ -2,7 +2,7 @@ import unify, {variable as v} from 'deep6/unify.js';
 import assemble from 'deep6/traverse/assemble.js';
 import asyncSolve from '../src/solvers/async.js';
 import {submit, TEST} from './harness.js';
-import {timeout} from './helpers.js';
+import {makeList, timeout} from './helpers.js';
 
 export default [
   async function test_asyncSolve_one() {
@@ -23,7 +23,7 @@ export default [
       },
       X = v('X'),
       result = [];
-    await asyncSolve(rules, 'member/2', [{value: 1, next: {value: 2, next: {value: 3, next: null}}}, X], async env => {
+    await asyncSolve(rules, 'member/2', [makeList([1, 2, 3]), X], async env => {
       result.push(assemble(X, env));
       await timeout(1);
     });

@@ -28,10 +28,10 @@ export default [
     solve(rules, 'last/2', [null, X], env => result.push(assemble(X, env)));
     eval(TEST('unify(result, [undefined])'));
     result = [];
-    solve(rules, 'last/2', [{value: 1, next: null}, X], env => result.push(assemble(X, env)));
+    solve(rules, 'last/2', [makeList([1]), X], env => result.push(assemble(X, env)));
     eval(TEST('unify(result, [1])'));
     result = [];
-    solve(rules, 'last/2', [{value: 1, next: {value: 2, next: null}}, X], env => result.push(assemble(X, env)));
+    solve(rules, 'last/2', [makeList([1, 2]), X], env => result.push(assemble(X, env)));
     eval(TEST('unify(result, [2])'));
   },
   function test_solve_member() {
@@ -40,22 +40,22 @@ export default [
       },
       X = v('X');
     let result = [];
-    solve(rules, 'member/2', [{value: 1, next: {value: 2, next: {value: 3, next: null}}}, 1], () => result.push(true));
+    solve(rules, 'member/2', [makeList([1, 2, 3]), 1], () => result.push(true));
     eval(TEST('unify(result, [true])'));
     result = [];
-    solve(rules, 'member/2', [{value: 1, next: {value: 2, next: {value: 3, next: null}}}, 2], () => result.push(true));
+    solve(rules, 'member/2', [makeList([1, 2, 3]), 2], () => result.push(true));
     eval(TEST('unify(result, [true])'));
     result = [];
-    solve(rules, 'member/2', [{value: 1, next: {value: 2, next: {value: 3, next: null}}}, 3], () => result.push(true));
+    solve(rules, 'member/2', [makeList([1, 2, 3]), 3], () => result.push(true));
     eval(TEST('unify(result, [true])'));
     result = [];
-    solve(rules, 'member/2', [{value: 1, next: {value: 2, next: {value: 3, next: null}}}, 5], () => result.push(true));
+    solve(rules, 'member/2', [makeList([1, 2, 3]), 5], () => result.push(true));
     eval(TEST('unify(result, [])'));
     result = [];
-    solve(rules, 'member/2', [{value: 1, next: {value: X, next: {value: 3, next: null}}}, 2], env => result.push(assemble(X, env)));
+    solve(rules, 'member/2', [makeList([1, X, 3]), 2], env => result.push(assemble(X, env)));
     eval(TEST('unify(result, [2])'));
     result = [];
-    solve(rules, 'member/2', [{value: 1, next: {value: 2, next: {value: 3, next: null}}}, X], env => result.push(assemble(X, env)));
+    solve(rules, 'member/2', [makeList([1, 2, 3]), X], env => result.push(assemble(X, env)));
     eval(TEST('unify(result, [1, 2, 3])'));
   },
   function test_solve_append() {
@@ -68,11 +68,11 @@ export default [
     solve(rules, 'append/3', [null, null, X], env => result.push(assemble(X, env)));
     eval(TEST('unify(result, [null])'));
     result = [];
-    solve(rules, 'append/3', [null, {value: 1, next: null}, X], env => result.push(assemble(X, env)));
-    eval(TEST('unify(result, [{value: 1, next: null}])'));
+    solve(rules, 'append/3', [null, makeList([1]), X], env => result.push(assemble(X, env)));
+    eval(TEST('unify(result, [makeList([1])])'));
     result = [];
-    solve(rules, 'append/3', [{value: 1, next: null}, null, X], env => result.push(assemble(X, env)));
-    eval(TEST('unify(result, [{value: 1, next: null}])'));
+    solve(rules, 'append/3', [makeList([1]), null, X], env => result.push(assemble(X, env)));
+    eval(TEST('unify(result, [makeList([1])])'));
 
     result = [];
     solve(rules, 'append/3', [makeList([1, 2]), makeList([3, 4]), X], env => result.push(assemble(X, env)));

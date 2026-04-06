@@ -22,32 +22,32 @@ export default [
       },
       X = v('X');
     let result = [];
-    for (const _env of gen(rules, 'member/2', [{value: 1, next: {value: 2, next: {value: 3, next: null}}}, 1])) {
+    for (const _env of gen(rules, 'member/2', [makeList([1, 2, 3]), 1])) {
       result.push(true);
     }
     eval(TEST('unify(result, [true])'));
     result = [];
-    for (const _env of gen(rules, 'member/2', [{value: 1, next: {value: 2, next: {value: 3, next: null}}}, 2])) {
+    for (const _env of gen(rules, 'member/2', [makeList([1, 2, 3]), 2])) {
       result.push(true);
     }
     eval(TEST('unify(result, [true])'));
     result = [];
-    for (const _env of gen(rules, 'member/2', [{value: 1, next: {value: 2, next: {value: 3, next: null}}}, 3])) {
+    for (const _env of gen(rules, 'member/2', [makeList([1, 2, 3]), 3])) {
       result.push(true);
     }
     eval(TEST('unify(result, [true])'));
     result = [];
-    for (const _env of gen(rules, 'member/2', [{value: 1, next: {value: 2, next: {value: 3, next: null}}}, 4])) {
+    for (const _env of gen(rules, 'member/2', [makeList([1, 2, 3]), 4])) {
       result.push(true);
     }
     eval(TEST('unify(result, [])'));
     result = [];
-    for (const env of gen(rules, 'member/2', [{value: 1, next: {value: X, next: {value: 3, next: null}}}, 5])) {
+    for (const env of gen(rules, 'member/2', [makeList([1, X, 3]), 5])) {
       result.push(assemble(X, env));
     }
     eval(TEST('unify(result, [5])'));
     result = [];
-    for (const env of gen(rules, 'member/2', [{value: 1, next: {value: 2, next: {value: 3, next: null}}}, X])) {
+    for (const env of gen(rules, 'member/2', [makeList([1, 2, 3]), X])) {
       result.push(assemble(X, env));
     }
     eval(TEST('unify(result, [1, 2, 3])'));
@@ -72,7 +72,7 @@ export default [
         'member/2': [(V, X) => [{args: [{value: V, next: X}, V]}], (V, X) => [{args: [{next: X}, V]}, {name: 'member/2', args: [X, V]}]]
       },
       X = v('X');
-    const it = gen(rules, 'member/2', [{value: 1, next: {value: 2, next: {value: 3, next: null}}}, X]);
+    const it = gen(rules, 'member/2', [makeList([1, 2, 3]), X]);
     const first = it.next();
     eval(TEST('!first.done'));
     eval(TEST('assemble(X, first.value) === 1'));
