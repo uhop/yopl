@@ -1,0 +1,24 @@
+# yopl — Quick API Reference
+
+<!-- TODO(step 5): fill in concrete API once typings/docs are written. -->
+
+`yopl` is an ES6 mini-library implementing a Prolog-style logic solver. Unification is delegated
+to `deep6`, yopl's only runtime dependency (a zero-dependency library).
+
+## Entry points
+
+- `yopl` (`src/solve.js`) — solver core / main entry
+- `yopl/solvers/gen.js` — synchronous generator-based driver
+- `yopl/solvers/async.js` — async callback-based driver
+- `yopl/solvers/asyncGen.js` — async generator driver
+- `yopl/rules/logic.js` — logical connectives
+- `yopl/rules/comp.js` — comparison rules
+- `yopl/rules/math.js` — arithmetic rules
+- `yopl/rules/bits.js` — bitwise rules
+- `yopl/rules/system.js` — system / utility rules
+
+## Conventions
+
+- ES6 modules; `"type": "module"`.
+- Single runtime dependency: `deep6`.
+- 2-space indent, single quotes, semicolons (Prettier).

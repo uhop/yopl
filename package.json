@@ -39,7 +39,12 @@
   },
   "scripts": {
     "test": "node tests/tests.js",
+    "test:bun": "bun run tests/tests.js",
+    "test:deno": "deno run --allow-read tests/tests.js",
     "debug": "node --inspect-brk tests/tests.js",
+    "ts-check": "tsc --noEmit",
+    "lint": "prettier --check .",
+    "lint:fix": "prettier --write .",
     "prepareDist": "node scripts/prepareDist.js",
     "babel": "babel src --out-dir cjs",
     "build": "npm run prepareDist && npm run babel",
@@ -59,7 +64,9 @@
   "devDependencies": {
     "@babel/cli": "^7.24.7",
     "@babel/core": "^7.24.7",
-    "@babel/preset-env": "^7.24.7"
+    "@babel/preset-env": "^7.24.7",
+    "prettier": "^3.8.1",
+    "typescript": "^6.0.2"
   },
   "files": [
     "/src",

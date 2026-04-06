@@ -1,0 +1,51 @@
+# yopl — Full API Reference
+
+<!-- TODO(step 5): expand into a complete API reference with examples. -->
+
+`yopl` is an ES6 mini-library implementing a Prolog-style logic solver in JavaScript. It
+provides rule-based logic programming with multiple driver styles (sync generator, async
+callback, async generator) and a built-in rule library. Unification is delegated to
+[`deep6`](https://www.npmjs.com/package/deep6) — yopl's only runtime dependency, itself a
+zero-dependency library.
+
+## Modules
+
+### `yopl` — `src/solve.js`
+
+Solver core. Main public entry point.
+
+### `yopl/solvers/gen.js`
+
+Synchronous generator-based driver. Yields solutions on demand.
+
+### `yopl/solvers/async.js`
+
+Async callback-based driver for I/O-bound rules.
+
+### `yopl/solvers/asyncGen.js`
+
+Async generator driver combining the above.
+
+### `yopl/rules/logic.js`
+
+Logical connectives (and, or, not, if-then-else, etc.).
+
+### `yopl/rules/comp.js`
+
+Comparison and ordering predicates.
+
+### `yopl/rules/math.js`
+
+Arithmetic predicates.
+
+### `yopl/rules/bits.js`
+
+Bitwise predicates.
+
+### `yopl/rules/system.js`
+
+System and utility predicates.
+
+## Examples
+
+<!-- TODO(step 5): add concrete examples after typings and wiki updates. -->

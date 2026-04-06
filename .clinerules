@@ -1,0 +1,60 @@
+<!-- Canonical source: AGENTS.md — keep this file in sync -->
+# yopl — AI Agent Rules
+
+## Project identity
+
+`yopl` is an ES6 mini-library that implements a logic solver in the style of Prolog. It provides
+rule-based logic programming with both callback and generator styles. Its only runtime dependency
+is [`deep6`](https://www.npmjs.com/package/deep6) (a zero-dependency library) for unification.
+
+## Critical rules
+
+- **ES6 modules.** The project is `"type": "module"`. Use `import`/`export` syntax.
+- **Single runtime dependency.** Only `deep6` is allowed in `dependencies`. Do not add others.
+- **Do not modify or delete test expectations** without understanding why they changed.
+- **Do not add or remove comments** unless explicitly asked.
+- **Keep `src/` in sync.** Run `npm test` and `npm run lint:fix` after changes.
+
+## Code style
+
+- 2-space indentation.
+- Single quotes for strings.
+- Semicolons are required (enforced by Prettier).
+- See `.prettierrc` for formatting settings.
+
+## Architecture quick reference
+
+- **Main entry:** `src/solve.js` — solver core.
+- **Solvers:** `src/solvers/` — alternative solver drivers.
+  - `gen.js` — synchronous generator-based solver.
+  - `async.js` — async callback-based solver.
+  - `asyncGen.js` — async generator-based solver.
+- **Rules:** `src/rules/` — built-in rule modules.
+  - `logic.js` — logical connectives.
+  - `comp.js` — comparison rules.
+  - `math.js` — arithmetic rules.
+  - `bits.js` — bitwise rules.
+  - `system.js` — system/utility rules.
+
+## Verification commands
+
+- `npm test` — run the test suite.
+- `npm run debug` — run tests with Node inspector.
+- `npm run ts-check` — TypeScript type checking.
+- `npm run lint` — Prettier check.
+- `npm run lint:fix` — Prettier write.
+
+## File layout
+
+- Entry point: `src/solve.js`
+- Solvers: `src/solvers/` (gen.js, async.js, asyncGen.js)
+- Rules: `src/rules/` (logic.js, comp.js, math.js, bits.js, system.js)
+- Tests: `tests/tests.js` (dispatcher), grouped in `tests/test-*.js`
+
+## When reading the codebase
+
+- Start with `ARCHITECTURE.md` for the module map and dependency graph.
+- `src/solve.js` is the core solver — read it first.
+- `src/solvers/` contains alternative driver styles built on the same core.
+- `src/rules/` defines the built-in rule library.
+- Read `README.md` for usage examples.
