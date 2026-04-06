@@ -1,4 +1,4 @@
-# Project update
+# Project refresh
 
 This is a logic solver similar to Prolog, but written in JS.
 
@@ -16,12 +16,24 @@ from `package.json`.
 
 Copy test-related documents and settings because next we will work on tests.
 
-## Step 2: tests
+## Step 2: remove CJS
+
+Instead of generating CJS files from ESM JS files explicitly, we'll import ESM files
+from CommonJS modules using built-in facilities of Node.
+
+Remove all Babel-related stuff: settings, scripts, dependencies.
+
+Update `exports` of `package.json` removing CJS exports and exports for individual files
+exporting `src/` folder instead.
+
+## Step 3: tests
 
 Adapt the test setup from `../deep6/tests/` and restructure tests similarly. Analyze excisting
 tests for coverage and add missing tests.
 
-## Step 3: TS typings
+Add a manual `.cjs` test that shows how to use this project from CommonJS modules.
+
+## Step 4: TS typings
 
 Create TS typings for all `.js` files in `src/`. Create JSDoc descriptions for IDE use
 aiming for factuality, brevity and clarity. Document all parameters and return types of
@@ -31,12 +43,12 @@ to such names in the original `.js` files.
 Create a test file (`.ts`) in `tests/` to test TS typings only. All functional tests should be
 in `.js` files only. This file will be used for `npm run ts-check` and to run manually.
 
-## Step 4: documentation
+## Step 5: documentation
 
 Document every module in `wiki/` using the relevant global skill. Create a proper
 content for `wiki/Home.md`. Update `README.md` and relevant AI-related docs.
 
-## Step 5: optimization
+## Step 6: optimization
 
 Analyze solvers (`src/solve.js`, `src/solvers/`) looking for potential bugs and
 improvement opportunities. Then analyze them if their performance can be improved.
