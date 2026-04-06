@@ -13,10 +13,10 @@
 
 ## Commands
 
-| Command         | Description                       |
-| --------------- | --------------------------------- |
-| `npm test`      | Run test suite                    |
-| `npm run debug` | Debug with Node inspector         |
+| Command         | Description               |
+| --------------- | ------------------------- |
+| `npm test`      | Run test suite            |
+| `npm run debug` | Debug with Node inspector |
 
 ## Project Identity
 

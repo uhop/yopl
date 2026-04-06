@@ -41,7 +41,7 @@ const prove = async (rules, goals, env) => {
       env.push();
       let newGoals = await goal(env, goals, stack);
       if (newGoals || newGoals === null) {
-        (newGoals && !newGoals.terms) && (newGoals = goals);
+        newGoals && !newGoals.terms && (newGoals = goals);
         stack.push({command: 1}, {goals: newGoals});
         continue main;
       }

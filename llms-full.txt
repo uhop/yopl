@@ -1,51 +1,158 @@
 # yopl — Full API Reference
 
-<!-- TODO(step 5): expand into a complete API reference with examples. -->
-
 `yopl` is an ES6 mini-library implementing a Prolog-style logic solver in JavaScript. It
-provides rule-based logic programming with multiple driver styles (sync generator, async
-callback, async generator) and a built-in rule library. Unification is delegated to
-[`deep6`](https://www.npmjs.com/package/deep6) — yopl's only runtime dependency, itself a
-zero-dependency library.
+provides rule-based logic programming with multiple driver styles and a built-in rule library.
+Unification is delegated to [`deep6`](https://www.npmjs.com/package/deep6) — yopl's only
+runtime dependency, itself a zero-dependency library.
 
-## Modules
+## Concepts
+
+- **Goal** — one of: a string (rule name with no args), a structured term `{name, args}`, or
+  an inline JS function `(env, goals, stack) => boolean | GoalFrame`.
+- **Rule** — a function (or array of functions for a disjunction) that receives a fresh batch
+  of logical variables and returns an array of terms. The first element is the rule head
+  (`{args: [...]}`); the rest are body goals.
+- **Rule database** — a `{name: rule}` object. Spread the built-in libraries to compose them.
+
+## Solvers
 
 ### `yopl` — `src/solve.js`
 
-Solver core. Main public entry point.
+```js
+import solve from 'yopl';
+solve(rules, name, args, env => { /* per solution */ });
+```
+
+Synchronous callback-style solver. Main public entry point.
 
 ### `yopl/solvers/gen.js`
 
-Synchronous generator-based driver. Yields solutions on demand.
+```js
+import gen from 'yopl/solvers/gen.js';
+for (const env of gen(rules, name, args)) { /* … */ }
+```
+
+Synchronous generator. Supports lazy enumeration — break out of the loop to stop after the
+first match.
 
 ### `yopl/solvers/async.js`
 
-Async callback-based driver for I/O-bound rules.
+```js
+import asyncSolve from 'yopl/solvers/async.js';
+await asyncSolve(rules, name, args, async env => { /* … */ });
+```
+
+Async callback solver — for predicates that need to `await`.
 
 ### `yopl/solvers/asyncGen.js`
 
-Async generator driver combining the above.
+```js
+import asyncGen from 'yopl/solvers/asyncGen.js';
+for await (const env of asyncGen(rules, name, args)) { /* … */ }
+```
 
-### `yopl/rules/logic.js`
+Async generator solver.
 
-Logical connectives (and, or, not, if-then-else, etc.).
-
-### `yopl/rules/comp.js`
-
-Comparison and ordering predicates.
-
-### `yopl/rules/math.js`
-
-Arithmetic predicates.
-
-### `yopl/rules/bits.js`
-
-Bitwise predicates.
+## Rule libraries
 
 ### `yopl/rules/system.js`
 
-System and utility predicates.
+Helpers and control predicates.
+
+**Term builders:**
+
+- `head(...args)` → `{args}`. Build a rule head.
+- `term(name, ...args)` → `{name, args}`. Build a structured goal term.
+- `list(...args)` → cons-list. Wrap the last arg with `rest()` to splice an explicit tail.
+- `listHead(...args)` → cons-list whose last argument is the tail directly. Requires ≥ 2 args.
+- `rest(value)` → `Tail` marker.
+
+**Inline goal builders:**
+
+- `fail` — always fails.
+- `halt` — aborts the proof search by clearing the driver stack.
+- `cut(sys)` — Prolog-style cut. Pass the trailing `...sys` rest-args from the rule definition.
+- `call(X)` — meta-call. `X` may be a string, a structured term, or a bound variable.
+- `isBound(...vars)` — succeeds when every supplied variable is bound.
+
+**`rules` object** — spreadable rule database:
+
+- *Type tests:* `isVar`, `isNonVar`, `isNumber`, `isString`, `isNull`, `isUndefined`, `isArray`.
+- *Equality:* `eq` (alias `unify`), `notEq` (alias `notUnifiable`).
+- *Control:* `call`, `not`, `isUnifiable`, `conjunction`, `disjunction`, `true`, `once`.
+- *Extended logic:* `counterExample`, `implies`.
+- *Higher-order:* `map`, `filter`, `foldl`, `foldr`, `compose`, `converse`.
+
+### `yopl/rules/comp.js`
+
+Comparisons. `lt`, `le`, `gt`, `ge` operate on bound, comparable values (number or string)
+of the same type. `nz` succeeds when its argument is non-zero.
+
+### `yopl/rules/math.js`
+
+Arithmetic, all reversible: `add`, `sub`, `mul`, `div`, `neg`. Each rule defines a relation
+between its arguments, and any one missing operand can be solved for.
+
+### `yopl/rules/bits.js`
+
+Bitwise: `bitAnd`, `bitOr` (forward only), `bitXor`, `bitNot` (reversible).
+
+### `yopl/rules/logic.js`
+
+Boolean logic: `logicalAnd`, `logicalOr`, `logicalXor`, `logicalNot`. Arguments are coerced
+with `!!`.
 
 ## Examples
 
-<!-- TODO(step 5): add concrete examples after typings and wiki updates. -->
+### List membership
+
+```js
+import {variable} from 'deep6/env.js';
+import assemble from 'deep6/traverse/assemble.js';
+import solve from 'yopl';
+
+const rules = {
+  member: [
+    (V, X) => [{args: [{value: V, next: X}, V]}],
+    (V, X) => [{args: [{next: X}, V]}, {name: 'member', args: [X, V]}]
+  ]
+};
+
+const list = {value: 1, next: {value: 2, next: {value: 3, next: null}}};
+const X = variable('X');
+solve(rules, 'member', [list, X], env => console.log(assemble(X, env)));
+// 1, 2, 3
+```
+
+### Append
+
+```js
+import gen from 'yopl/solvers/gen.js';
+import {variable} from 'deep6/env.js';
+import assemble from 'deep6/traverse/assemble.js';
+
+const rules = {
+  append: [
+    Y => [{args: [null, Y, Y]}],
+    (X, Y, Z, V) => [
+      {args: [{value: V, next: X}, Y, {value: V, next: Z}]},
+      {name: 'append', args: [X, Y, Z]}
+    ]
+  ]
+};
+
+const X = variable('X'), Y = variable('Y');
+const target = {value: 1, next: {value: 2, next: {value: 3, next: null}}};
+
+for (const env of gen(rules, 'append', [X, Y, target])) {
+  console.log(assemble(X, env), '++', assemble(Y, env));
+}
+```
+
+## Conventions
+
+- ES6 modules; `"type": "module"`.
+- Single runtime dependency: `deep6`.
+- 2-space indent, single quotes, semicolons (Prettier).
+- Pure ESM source. CommonJS consumers can use Node's built-in dynamic `import()` —
+  see `tests/test-cjs.cjs` for a smoke test.

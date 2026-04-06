@@ -19,7 +19,7 @@ export const call = X => (env, goals) => {
   let term = X,
     name,
     args;
-    // TODO: add processing of arrays of goals
+  // TODO: add processing of arrays of goals
   if (isVariable(X)) {
     if (!X.isBound(env)) return false;
     term = X.get(env);
@@ -42,7 +42,10 @@ export const call = X => (env, goals) => {
   return {terms: [{name, args}], index: 0, next: goals};
 };
 
-export const isBound = (...args) => env => args.every(V => isVariable(V) && V.isBound(env));
+export const isBound =
+  (...args) =>
+  env =>
+    args.every(V => isVariable(V) && V.isBound(env));
 
 export const head = (...args) => ({args});
 export const term = (name, ...args) => ({name, args});

@@ -1,41 +1,12 @@
 {
   "name": "yopl",
   "version": "1.1.4",
-  "description": "No dependency mini-library: unification, deep equivalence, deep cloning, logical solver.",
+  "description": "ES6 mini-library: Prolog-style logic solver with rule-based programming and multiple driver styles. Built on deep6 for unification.",
   "type": "module",
-  "module": "src/solve.js",
-  "main": "cjs/solve.js",
+  "main": "src/solve.js",
   "exports": {
-    ".": {
-      "require": "./cjs/solve.js",
-      "default": "./src/solve.js"
-    },
-    "./*": {
-      "require": "./cjs/*",
-      "default": "./src/*"
-    },
-    "./solve.js": {
-      "require": "./cjs/solve.js",
-      "default": "./src/solve.js"
-    },
-    "./solvers/async.js": {
-      "require": "./cjs/solvers/async.js",
-      "default": "./src/solvers/async.js"
-    },
-    "./solvers/asyncGen.js": {
-      "require": "./cjs/solvers/asyncGen.js",
-      "default": "./src/solvers/asyncGen.js"
-    },
-    "./solvers/gen.js": {
-      "require": "./cjs/solvers/gen.js",
-      "default": "./src/solvers/gen.js"
-    },
-    "./cjs": "./cjs/solve.js",
-    "./cjs/*": "./cjs/*",
-    "./cjs/solve.js": "./cjs/solve.js",
-    "./cjs/solvers/async.js": "./cjs/solvers/async.js",
-    "./cjs/solvers/asyncGen.js": "./cjs/solvers/asyncGen.js",
-    "./cjs/solvers/gen.js": "./cjs/solvers/gen.js"
+    ".": "./src/solve.js",
+    "./*": "./src/*"
   },
   "scripts": {
     "test": "node tests/tests.js",
@@ -44,11 +15,7 @@
     "debug": "node --inspect-brk tests/tests.js",
     "ts-check": "tsc --noEmit",
     "lint": "prettier --check .",
-    "lint:fix": "prettier --write .",
-    "prepareDist": "node scripts/prepareDist.js",
-    "babel": "babel src --out-dir cjs",
-    "build": "npm run prepareDist && npm run babel",
-    "prepublishOnly": "npm run build"
+    "lint:fix": "prettier --write ."
   },
   "repository": {
     "type": "git",
@@ -56,35 +23,24 @@
   },
   "keywords": [
     "logic programming",
+    "logic solver",
     "solver",
-    "logic solver"
+    "prolog",
+    "unification",
+    "rules",
+    "es6"
   ],
   "author": "Eugene Lazutkin <eugene.lazutkin@gmail.com> (https://www.lazutkin.com/)",
+  "funding": "https://github.com/sponsors/uhop",
   "license": "BSD-3-Clause",
-  "devDependencies": {
-    "@babel/cli": "^7.24.7",
-    "@babel/core": "^7.24.7",
-    "@babel/preset-env": "^7.24.7",
-    "prettier": "^3.8.1",
-    "typescript": "^6.0.2"
-  },
   "files": [
-    "/src",
-    "/cjs"
+    "/src"
   ],
-  "babel": {
-    "presets": [
-      [
-        "@babel/preset-env",
-        {
-          "targets": {
-            "node": "current"
-          }
-        }
-      ]
-    ]
-  },
   "dependencies": {
     "deep6": "^1.2.0"
+  },
+  "devDependencies": {
+    "prettier": "^3.8.1",
+    "typescript": "^6.0.2"
   }
 }

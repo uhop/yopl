@@ -35,7 +35,7 @@ function* prove(rules, goals, env) {
     while (goals && goals.index >= goals.terms.length) {
       goals = goals.next;
     }
-    if (!goals){
+    if (!goals) {
       yield env;
       continue main;
     }
@@ -44,7 +44,7 @@ function* prove(rules, goals, env) {
       env.push();
       let newGoals = goal(env, goals, stack);
       if (newGoals || newGoals === null) {
-        (newGoals && !newGoals.terms) && (newGoals = goals);
+        newGoals && !newGoals.terms && (newGoals = goals);
         stack.push({command: 1}, {goals: newGoals});
         continue main;
       }
@@ -59,13 +59,13 @@ function* prove(rules, goals, env) {
     !Array.isArray(ruleList) && (ruleList = [ruleList]);
     stack.push({command: 2, ruleList, index: 0, goals, args: goal.args || []});
   }
-};
+}
 
 function* generate(rules, name, args) {
   const env = new Env();
   env.openObjects = true;
   const goals = {terms: [{name, args}], index: 0, next: null};
   yield* prove(rules, goals, env);
-};
+}
 
 export default generate;

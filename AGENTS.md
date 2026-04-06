@@ -69,23 +69,36 @@ yopl/
 
 ## Architecture
 
-<!-- TODO(step 5): expand this section once modules are documented in wiki/. -->
+- **Solver core** (`src/solve.js`) — the synchronous callback-style solver and the main public
+  entry. Drives unification (via `deep6`) over a rule database using an explicit goal stack.
+- **Solver drivers** (`src/solvers/`) — alternative execution strategies sharing the same proof
+  loop:
+  - `gen.js` — synchronous generator yielding one `Env` per solution.
+  - `async.js` — async callback-based driver for `await`-bearing predicates.
+  - `asyncGen.js` — async generator combining the two.
+- **Rule library** (`src/rules/`) — built-in predicates:
+  - `system.js` — helpers (`head`, `term`, `list`, `listHead`, `rest`) and control predicates
+    (`call`, `cut`, `fail`, `halt`, `isBound`, `not`, `true`, `eq`, `once`, `map`, `filter`,
+    `foldl`, `foldr`, …).
+  - `comp.js` — comparisons (`lt`/`le`/`gt`/`ge`, `nz`).
+  - `math.js` — arithmetic (`add`/`sub`/`mul`/`div`/`neg`).
+  - `bits.js` — bitwise (`bitAnd`/`bitOr`/`bitXor`/`bitNot`).
+  - `logic.js` — boolean logic (`logicalAnd`/`logicalOr`/`logicalXor`/`logicalNot`).
 
-- **Solver core** (`src/solve.js`) — the main solver entry. Drives unification (via `deep6`) over a
-  rule database to satisfy goals.
-- **Solver drivers** (`src/solvers/`) — alternative execution strategies built on the same core:
-  - `gen.js` — synchronous generator yielding solutions on demand.
-  - `async.js` — async callback-based driver.
-  - `asyncGen.js` — async generator driver.
-- **Rule library** (`src/rules/`) — built-in predicates grouped by domain (logic, comparison,
-  arithmetic, bitwise, system).
+Per-module documentation lives in the [wiki](https://github.com/uhop/yopl/wiki).
 
 ## Writing tests
 
-<!-- TODO(step 3): document the test harness once it has been adapted from deep6/tests/. -->
-
 - Tests live in `tests/test-*.js`, dispatched via `tests/tests.js`.
-- Run with `npm test`.
+- The test harness (`tests/harness.js`) is the same lightweight one used by `deep6`. Each test
+  module exports a default array of named test functions; the dispatcher concatenates them and
+  runs them with `runAllTests`.
+- Use the `submit` / `TEST` helpers from `harness.js` to record assertions:
+  `eval(TEST('unify(result, [1, 2, 3])'));`.
+- Shared list/timeout helpers live in `tests/helpers.js`.
+- Run with `npm test`. The CommonJS interop smoke test lives at `tests/test-cjs.cjs` and is run
+  manually with `node tests/test-cjs.cjs`.
+- TypeScript typings are exercised separately by `tests/test-types.ts` via `npm run ts-check`.
 
 ## When reading the codebase
 

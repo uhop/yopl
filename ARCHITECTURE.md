@@ -27,12 +27,31 @@ tests/                    # Tests grouped in test-*.js, dispatched by tests.js
 
 ## Core concepts
 
-<!-- TODO(step 5): write up the solver model — goals, rules, unification, backtracking, drivers. -->
+### Goals, terms, rules
+
+A **goal** is one of:
+
+- a string — the name of a rule with no arguments;
+- a structured term `{name, args}` — invoke `name` with the given argument vector;
+- a JavaScript function `(env, goals, stack) => boolean | GoalFrame` — an inline predicate
+  evaluated directly by the solver.
+
+A **rule** is a function (or array of functions for a disjunction) that receives a fresh batch
+of logical variables and returns an array of terms. The first element is the rule's _head_
+(`{args: [...]}`); the rest are body goals evaluated in order.
+
+A **rule database** is a `{name: rule}` object. Spread the built-in rule libraries into your own
+database to compose them: `{...systemRules, ...mathRules, myRule: …}`.
 
 ### Solver core
 
-`src/solve.js` is the heart of yopl. It evaluates goals against a rule database, using `deep6`
-for unification and managing backtracking and choice points.
+`src/solve.js` is the heart of yopl. It evaluates goals against a rule database, delegating
+unification to `deep6`. The proof loop is non-recursive — it maintains an explicit stack of
+frames so deep proofs do not blow the JS call stack — and tracks alternatives via choice-point
+frames so that backtracking is just popping the stack and reverting the environment.
+
+The synchronous callback-style `solve` is the main entry point. The `src/solvers/` modules wrap
+the same proof loop in alternative drivers that yield (or `await`) per solution.
 
 ### Drivers
 
@@ -54,13 +73,22 @@ The `src/solvers/` modules wrap the core in alternative execution styles:
 
 ## Module dependency graph
 
-<!-- TODO(step 5): fill in once typings/docs are in place. -->
+```
+src/solve.js               ── deep6/unify.js (unify, Env, variable)
+src/solvers/gen.js         ── deep6/unify.js
+src/solvers/async.js       ── deep6/unify.js
+src/solvers/asyncGen.js    ── deep6/unify.js
 
+src/rules/system.js        ── deep6/env.js (_, isVariable)
+src/rules/comp.js          ── deep6/env.js (_), src/rules/system.js
+src/rules/math.js          ── deep6/env.js (_), src/rules/system.js
+src/rules/bits.js          ── deep6/env.js (_), src/rules/system.js
+src/rules/logic.js         ── deep6/env.js (_), src/rules/system.js
 ```
-src/solve.js  ── deep6
-src/solvers/* ── src/solve.js
-src/rules/*   ── src/solve.js (and possibly deep6)
-```
+
+The solver drivers are independent — none of them imports the others, and none of them depends
+on the rule library. The rule modules depend only on `deep6` and on `system.js` for shared
+helpers.
 
 ## Import paths
 
