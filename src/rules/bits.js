@@ -16,7 +16,7 @@ export const rules = {
         if (x !== _ && typeof x != 'number') return false;
         const y = Y.get(env);
         if (y !== _ && typeof y != 'number') return false;
-        const z = X.get(env);
+        const z = Z.get(env);
         if (z !== _ && typeof z != 'number') return false;
         if (x === _ || y === _ || z === _) return true;
         return (x & y) === z;
@@ -48,7 +48,7 @@ export const rules = {
         if (x !== _ && typeof x != 'number') return false;
         const y = Y.get(env);
         if (y !== _ && typeof y != 'number') return false;
-        const z = X.get(env);
+        const z = Z.get(env);
         if (z !== _ && typeof z != 'number') return false;
         if (x === _ || y === _ || z === _) return true;
         return (x | y) === z;
@@ -70,19 +70,19 @@ export const rules = {
   bitXor: [
     (X, Y, Z, ...sys) => [
       head(X, Y, Z),
-      (env, stack) => {
+      (env, goals, stack) => {
         const isX = X.isBound(env),
           isY = Y.isBound(env),
           isZ = Z.isBound(env),
           count = (isX ? 1 : 0) + (isY ? 1 : 0) + (isZ ? 1 : 0);
         if (count < 2) return false;
-        cut(sys)(env, stack);
+        cut(sys)(env, goals, stack);
         if (count == 3) {
           const x = X.get(env);
           if (x !== _ && typeof x != 'number') return false;
           const y = Y.get(env);
           if (y !== _ && typeof y != 'number') return false;
-          const z = X.get(env);
+          const z = Z.get(env);
           if (z !== _ && typeof z != 'number') return false;
           if (x === _ || y === _ || z === _) return true;
           return (x ^ y) === z;
@@ -116,18 +116,17 @@ export const rules = {
   bitNot: [
     (X, Y, ...sys) => [
       head(X, Y),
-      (env, stack) => {
+      (env, goals, stack) => {
         const isX = X.isBound(env),
-          isY = Y.isBound(env);
-        count = (isX ? 1 : 0) + (isY ? 1 : 0);
+          isY = Y.isBound(env),
+          count = (isX ? 1 : 0) + (isY ? 1 : 0);
         if (count < 1) return false;
-        cut(sys)(env, stack);
+        cut(sys)(env, goals, stack);
         if (count == 2) {
           const x = X.get(env);
           if (x !== _ && typeof x != 'number') return false;
           const y = Y.get(env);
           if (y !== _ && typeof y != 'number') return false;
-          const z = X.get(env);
           if (x === _ || y === _) return true;
           return x === ~y;
         }

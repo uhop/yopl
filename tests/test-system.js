@@ -50,10 +50,34 @@ export default [
     solve(systemRules, 'true', [], () => result.push(true));
     eval(TEST('unify(result, [true])'));
   },
-  // TODO(step 6): test_rule_eq_succeeds / test_rule_eq_fails — the `eq`
-  // rule body is `X => head(X, X)` instead of `X => [head(X, X)]`, so
-  // solve.js crashes on `terms[0].args`. Same problem affects any rule
-  // that wraps `eq` (call/term('eq',…), not, isUnifiable).
+  function test_rule_eq_succeeds() {
+    const X = v('X'),
+      result = [];
+    solve(systemRules, 'eq', [X, 42], env => result.push(assemble(X, env)));
+    eval(TEST('unify(result, [42])'));
+  },
+  function test_rule_eq_fails() {
+    const result = [];
+    solve(systemRules, 'eq', [1, 2], () => result.push(true));
+    eval(TEST('unify(result, [])'));
+  },
+  function test_rule_unify_alias() {
+    // `unify` is an alias for `eq`.
+    const X = v('X'),
+      result = [];
+    solve(systemRules, 'unify', [X, 7], env => result.push(assemble(X, env)));
+    eval(TEST('unify(result, [7])'));
+  },
+  function test_rule_notEq_succeeds() {
+    const result = [];
+    solve(systemRules, 'notEq', [1, 2], () => result.push(true));
+    eval(TEST('unify(result, [true])'));
+  },
+  function test_rule_notEq_fails() {
+    const result = [];
+    solve(systemRules, 'notEq', [1, 1], () => result.push(true));
+    eval(TEST('unify(result, [])'));
+  },
   function test_rule_isVar_isNonVar() {
     const X = v('X'),
       result = [];
@@ -75,8 +99,34 @@ export default [
     solve(systemRules, 'isArray', [[1, 2]], () => result.push('arr'));
     eval(TEST('unify(result, ["null", "undef", "arr"])'));
   },
-  // TODO(step 6): test_rule_call_with_term / test_rule_not_negation_as_failure
-  // — both depend on the `eq` rule (see above).
+  function test_rule_call_with_term() {
+    // call(term('eq', X, 7)) should bind X to 7.
+    const X = v('X'),
+      rules = {
+        ...systemRules,
+        run: () => [head(), call(term('eq', X, 7))]
+      },
+      result = [];
+    solve(rules, 'run', [], env => result.push(assemble(X, env)));
+    eval(TEST('unify(result, [7])'));
+  },
+  function test_rule_not_negation_as_failure() {
+    const rules = {...systemRules},
+      result = [];
+    // not(eq(1, 2)) succeeds because eq(1, 2) fails
+    solve(rules, 'not', [term('eq', 1, 2)], () => result.push(true));
+    eval(TEST('unify(result, [true])'));
+    // not(eq(1, 1)) fails
+    const result2 = [];
+    solve(rules, 'not', [term('eq', 1, 1)], () => result2.push(true));
+    eval(TEST('unify(result2, [])'));
+  },
+  function test_rule_true_alone() {
+    // The 'true' rule succeeds with no args.
+    const result = [];
+    solve(systemRules, 'true', [], () => result.push(true));
+    eval(TEST('unify(result, [true])'));
+  },
   function test_rule_member_with_cut() {
     // Demonstrate cut: stop after first match for a duplicate-containing list.
     const rules = {
@@ -96,9 +146,19 @@ export default [
     solve(rules, 'always', [], () => result.push(true));
     eval(TEST('unify(result, [])'));
   },
-  // TODO(step 6): test_rule_halt — `halt` empties the stack, including
-  // the user-callback frame appended by solve.js, so the callback never
-  // fires. Decide whether this is the intended semantics in step 6.
+  function test_rule_halt_aborts_search() {
+    // `halt` is an exception-style abort: when reached, the entire proof
+    // search ends and no further (or current) solutions are reported.
+    const rules = {
+        ab: [() => [head(1)], () => [head(2)]],
+        // Place halt before the user-visible work.
+        run: X => [head(X), halt, term('ab', X)]
+      },
+      X = v('X'),
+      result = [];
+    solve(rules, 'run', [X], env => result.push(assemble(X, env)));
+    eval(TEST('unify(result, [])'));
+  },
   function test_rule_isBound() {
     const X = v('X'),
       Y = v('Y'),

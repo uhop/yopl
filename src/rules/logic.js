@@ -14,7 +14,7 @@ export const rules = {
       if (count == 3) {
         const x = X.get(env),
           y = Y.get(env),
-          z = X.get(env);
+          z = Z.get(env);
         if (x === _ || y === _ || z === _) return true;
         return !(x && y) === !z;
       }
@@ -42,7 +42,7 @@ export const rules = {
       if (count == 3) {
         const x = X.get(env),
           y = Y.get(env),
-          z = X.get(env);
+          z = Z.get(env);
         if (x === _ || y === _ || z === _) return true;
         return !(x || y) === !z;
       }
@@ -70,7 +70,7 @@ export const rules = {
       if (count == 3) {
         const x = X.get(env),
           y = Y.get(env),
-          z = X.get(env);
+          z = Z.get(env);
         if (x === _ || y === _ || z === _) return true;
         return (!!x ^ !!y) === !!z;
       }
@@ -98,8 +98,8 @@ export const rules = {
     head(X, Y),
     env => {
       const isX = X.isBound(env),
-        isY = Y.isBound(env);
-      count = (isX ? 1 : 0) + (isY ? 1 : 0);
+        isY = Y.isBound(env),
+        count = (isX ? 1 : 0) + (isY ? 1 : 0);
       if (count < 1) return false;
       if (count == 2) {
         const x = X.get(env),

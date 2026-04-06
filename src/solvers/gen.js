@@ -2,10 +2,13 @@ import unify, {Env, variable} from 'deep6/unify.js';
 
 let counter = 0;
 const generateVariables = count => {
-  const t = [];
-  for (let i = 0; i < count; ++i) t.push(counter++);
-  return t.map(name => variable(Symbol(name)));
+  const vars = new Array(count);
+  for (let i = 0; i < count; ++i) vars[i] = variable(Symbol(counter++));
+  return vars;
 };
+
+const POP = {command: 1};
+const NO_ARGS = Object.freeze([]);
 
 function* prove(rules, goals, env) {
   const stack = [{goals}];
@@ -21,9 +24,9 @@ function* prove(rules, goals, env) {
           vars = generateVariables(rule.length + 1),
           terms = (typeof rule == 'function' ? rule : rule.goals)(...vars);
         env.push();
-        if (unify(terms[0].args || [], frame.args, env)) {
+        if (unify(terms[0].args || NO_ARGS, frame.args, env)) {
           const newGoals = {terms, index: 1, next: frame.goals};
-          stack.push(frame, {command: 1}, {goals: newGoals});
+          stack.push(frame, POP, {goals: newGoals});
           env.bindVal(vars[vars.length - 1].name, frame);
           continue main;
         }
@@ -45,7 +48,7 @@ function* prove(rules, goals, env) {
       let newGoals = goal(env, goals, stack);
       if (newGoals || newGoals === null) {
         newGoals && !newGoals.terms && (newGoals = goals);
-        stack.push({command: 1}, {goals: newGoals});
+        stack.push(POP, {goals: newGoals});
         continue main;
       }
       --goals.index;
@@ -56,8 +59,9 @@ function* prove(rules, goals, env) {
       goal = {name: goal};
     }
     let ruleList = rules[goal.name];
-    !Array.isArray(ruleList) && (ruleList = [ruleList]);
-    stack.push({command: 2, ruleList, index: 0, goals, args: goal.args || []});
+    if (ruleList == null) continue main;
+    if (!Array.isArray(ruleList)) ruleList = [ruleList];
+    stack.push({command: 2, ruleList, index: 0, goals, args: goal.args || NO_ARGS});
   }
 }
 

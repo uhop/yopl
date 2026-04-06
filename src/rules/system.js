@@ -96,13 +96,13 @@ export const rules = {
   isArray: X => [head(X), env => X.isBound(env) && Array.isArray(X.get(env))],
 
   // equality
-  eq: X => head(X, X),
-  notEq: [(X, ...sys) => [head(X, X), cut(sys), fail], [_]],
+  eq: X => [head(X, X)],
+  notEq: [(X, ...sys) => [head(X, X), cut(sys), fail], () => [head(_, _)]],
   // unify is eq
 
   // control predicates
   call: X => [head(X), call(X)],
-  not: [(X, ...sys) => [head(X), call(X), cut(sys), fail], () => [head()]],
+  not: [(X, ...sys) => [head(X), call(X), cut(sys), fail], () => [head(_)]],
   isUnifiable: (X, Y) => [head(X, Y), term('not', term('not', term('eq', [X, Y])))],
   // notUnifiable is notEq
   conjunction: [() => [head(null)], (X, Xt) => [head(listHead(X, Xt)), call(X), term('conjunction', Xt)]],
@@ -125,7 +125,7 @@ export const rules = {
     (P, X, Xt, Yt) => [head(P, listHead(X, Xt), listHead(X, Yt)), term(P, X), term('filter', Xt, Yt)],
     (P, X, Xt, Yt) => [head(P, listHead(X, Xt), listHead(X, Yt)), term('not', term(P, X)), term('filter', Xt, Yt)]
   ],
-  foldl: [A => [head(_, A, null, A)], (F, A, X, Xt, O, B) => [head(F, A, listHead(X, Xt), Yt), call(term(F, A, X, B)), term('foldl', F, B, Xt, O)]],
+  foldl: [A => [head(_, A, null, A)], (F, A, X, Xt, O, B) => [head(F, A, listHead(X, Xt), O), call(term(F, A, X, B)), term('foldl', F, B, Xt, O)]],
   foldr: [A => [head(_, A, null, A)], (F, A, X, Xt, O, T) => [head(F, A, listHead(X, Xt), O), term('foldr', F, A, Xt, T), call(term(F, X, T, O))]],
   compose: (F, G, X, O, T) => [head(F, G, X, O), call(term(G, X, T)), call(term(F, T, O))],
   converse: (F, X, Y, O) => [head(F, X, Y, O), call(term(F, Y, X, O))]

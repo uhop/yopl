@@ -88,7 +88,24 @@ export default [
     });
     const expected = [null, makeList([1, 2, 3]), makeList([1]), makeList([2, 3]), makeList([1, 2]), makeList([3]), makeList([1, 2, 3]), null];
     eval(TEST('unify(result, expected)'));
+  },
+  function test_solve_no_match() {
+    // Goal name that has no matching rule should produce no callback invocations.
+    const rules = {'one/1': () => [{args: [1]}]},
+      X = v('X'),
+      result = [];
+    solve(rules, 'unknown/1', [X], () => result.push(true));
+    eval(TEST('unify(result, [])'));
+  },
+  function test_solve_unknown_subgoal() {
+    // A rule body that calls an unknown predicate fails the surrounding goal
+    // chain (rather than crashing).
+    const rules = {
+        outer: X => [{args: [X]}, {name: 'unknown', args: [X]}]
+      },
+      X = v('X'),
+      result = [];
+    solve(rules, 'outer', [X], () => result.push(true));
+    eval(TEST('unify(result, [])'));
   }
-  // TODO(step 6): test_solve_no_match — solve.js has no guard for an
-  // unknown rule name (rules[name] is undefined), causing a TypeError.
 ];

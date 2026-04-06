@@ -16,8 +16,17 @@ export default [
       await timeout(5);
     });
     eval(TEST('unify(result, [1])'));
+  },
+  async function test_asyncSolve_member() {
+    const rules = {
+        'member/2': [(V, X) => [{args: [{value: V, next: X}, V]}], (V, X) => [{args: [{next: X}, V]}, {name: 'member/2', args: [X, V]}]]
+      },
+      X = v('X'),
+      result = [];
+    await asyncSolve(rules, 'member/2', [{value: 1, next: {value: 2, next: {value: 3, next: null}}}, X], async env => {
+      result.push(assemble(X, env));
+      await timeout(1);
+    });
+    eval(TEST('unify(result, [1, 2, 3])'));
   }
-  // TODO(step 6): test_asyncSolve_member — solvers/async.js calls
-  // `prove(...)` without `await`, so multi-solution cases lose results
-  // when the per-callback `await` suspends after the first push.
 ];
