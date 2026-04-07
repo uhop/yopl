@@ -1,6 +1,6 @@
 {
   "name": "yopl",
-  "version": "1.1.4",
+  "version": "1.2.0",
   "description": "Embeddable Prolog-style logic engine for JavaScript: declarative rules, unification, backtracking search, and four solver drivers (sync/async × callback/generator). Useful for pattern matching with extraction, constraint search, type inference, planners, expert systems, and policy checks. ESM, single runtime dependency (deep6).",
   "type": "module",
   "main": "src/solve.js",
@@ -47,8 +47,19 @@
   "author": "Eugene Lazutkin <eugene.lazutkin@gmail.com> (https://www.lazutkin.com/)",
   "funding": "https://github.com/sponsors/uhop",
   "license": "BSD-3-Clause",
+  "bugs": {
+    "url": "https://github.com/uhop/yopl/issues"
+  },
+  "homepage": "https://github.com/uhop/yopl#readme",
+  "llms": "https://raw.githubusercontent.com/uhop/yopl/master/llms.txt",
+  "llmsFull": "https://raw.githubusercontent.com/uhop/yopl/master/llms-full.txt",
   "files": [
-    "/src"
+    "src",
+    "skills",
+    "llms.txt",
+    "llms-full.txt",
+    "AGENTS.md",
+    "ARCHITECTURE.md"
   ],
   "dependencies": {
     "deep6": "^1.2.0"

@@ -12,17 +12,17 @@ Its only runtime dependency is [`deep6`](https://www.npmjs.com/package/deep6), i
 
 ## What it does and when to use it
 
-`yopl` lets you describe a problem as a set of *rules* over JavaScript values and ask the solver to find values that satisfy them. You write declarative rules; the engine handles search, unification, and backtracking. You stay inside JavaScript — there is no embedded DSL to parse, no separate Prolog runtime, and rules can call back into plain JS (sync or async) whenever a piece of logic is easier to express that way.
+`yopl` lets you describe a problem as a set of _rules_ over JavaScript values and ask the solver to find values that satisfy them. You write declarative rules; the engine handles search, unification, and backtracking. You stay inside JavaScript — there is no embedded DSL to parse, no separate Prolog runtime, and rules can call back into plain JS (sync or async) whenever a piece of logic is easier to express that way.
 
 It is useful when a problem is awkward to express as straight-line code but natural to express as constraints or relations:
 
-- Pattern matching and shape validation against deeply nested data, where you also want to *extract* values during the match.
+- Pattern matching and shape validation against deeply nested data, where you also want to _extract_ values during the match.
 - Searching configurations, dependency graphs, or rule sets for combinations that satisfy several conditions at once.
 - Type-inference-like or tag-propagation passes over an AST or IR.
 - Small expert systems, planners, permission/policy checks, and "find me an X such that Y" queries embedded inside a larger JS app.
 - Test fixtures and property-style checks that need to enumerate all values matching a spec.
 
-If you only need single-direction pattern matching, a regex or a destructuring assignment is simpler. Reach for `yopl` when you need *bidirectional* matching (unification), backtracking across alternative rules, or enumeration of all solutions — and you want all of that without leaving your JavaScript codebase.
+If you only need single-direction pattern matching, a regex or a destructuring assignment is simpler. Reach for `yopl` when you need _bidirectional_ matching (unification), backtracking across alternative rules, or enumeration of all solutions — and you want all of that without leaving your JavaScript codebase.
 
 ## Installation
 
@@ -91,6 +91,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for the development workflow and [AGENT
 
 ## Release history
 
+- 1.2.0 — removed CJS build, restructured tests, added TypeScript typings, simplified list creation, bug fixes and performance improvements, expanded docs and wiki.
 - 1.1.4 — updated dependencies.
 - 1.1.3 — updated dependencies.
 - 1.1.2 — updated dependencies.
