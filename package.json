@@ -62,7 +62,7 @@
     "ARCHITECTURE.md"
   ],
   "dependencies": {
-    "deep6": "^1.2.0"
+    "deep6": "^1.2.1"
   },
   "devDependencies": {
     "prettier": "^3.8.1",
