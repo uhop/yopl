@@ -1,9 +1,10 @@
 {
   "name": "yopl",
   "version": "1.1.4",
-  "description": "ES6 mini-library: Prolog-style logic solver with rule-based programming and multiple driver styles. Built on deep6 for unification.",
+  "description": "Embeddable Prolog-style logic engine for JavaScript: declarative rules, unification, backtracking search, and four solver drivers (sync/async × callback/generator). Useful for pattern matching with extraction, constraint search, type inference, planners, expert systems, and policy checks. ESM, single runtime dependency (deep6).",
   "type": "module",
   "main": "src/solve.js",
+  "types": "src/solve.d.ts",
   "exports": {
     ".": "./src/solve.js",
     "./*": "./src/*"
@@ -22,13 +23,26 @@
     "url": "git://github.com/uhop/yopl.git"
   },
   "keywords": [
-    "logic programming",
-    "logic solver",
-    "solver",
     "prolog",
+    "logic-programming",
+    "logic-solver",
     "unification",
+    "unify",
+    "backtracking",
+    "rule-engine",
     "rules",
-    "es6"
+    "declarative",
+    "relational",
+    "constraint-solver",
+    "pattern-matching",
+    "inference",
+    "type-inference",
+    "expert-system",
+    "planner",
+    "embeddable",
+    "esm",
+    "typescript",
+    "deep6"
   ],
   "author": "Eugene Lazutkin <eugene.lazutkin@gmail.com> (https://www.lazutkin.com/)",
   "funding": "https://github.com/sponsors/uhop",
