@@ -65,7 +65,7 @@
     "deep6": "^1.2.1"
   },
   "devDependencies": {
-    "prettier": "^3.8.1",
+    "prettier": "^3.8.2",
     "typescript": "^6.0.2"
   }
 }
