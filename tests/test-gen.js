@@ -1,6 +1,7 @@
 import unify, {variable as v} from 'deep6/unify.js';
 import assemble from 'deep6/traverse/assemble.js';
 import gen from '../src/solvers/gen.js';
+import {head, list, rest, cut, halt, term, rules as systemRules} from '../src/rules/system.js';
 import {submit, TEST} from './harness.js';
 import {makeList} from './helpers.js';
 
@@ -76,5 +77,43 @@ export default [
     const first = it.next();
     eval(TEST('!first.done'));
     eval(TEST('assemble(X, first.value) === 1'));
+  },
+  function test_gen_unknown_rule_throws() {
+    let caught = false;
+    try {
+      for (const _env of gen({}, 'noSuchRule', [])) {
+        // never reached
+      }
+    } catch (_e) {
+      caught = true;
+    }
+    eval(TEST('caught'));
+  },
+  function test_gen_cut() {
+    // cut after the first match prevents the generator from yielding
+    // duplicate / later solutions for that branch.
+    const rules = {
+      ...systemRules,
+      member: [(V, X, ...sys) => [head(list(V, rest(X)), V), cut(sys)], (V, X) => [head({next: X}, V), term('member', X, V)]]
+    };
+    const result = [];
+    for (const _env of gen(rules, 'member', [list(1, 2, 2, 3), 2])) {
+      result.push(true);
+    }
+    eval(TEST('unify(result, [true])'));
+  },
+  function test_gen_halt() {
+    // halt aborts the entire search — the generator yields zero solutions
+    // even though the rule could otherwise have produced one.
+    const rules = {
+      ab: [() => [head(1)], () => [head(2)]],
+      run: X => [head(X), halt, term('ab', X)]
+    };
+    const X = v('X'),
+      result = [];
+    for (const env of gen(rules, 'run', [X])) {
+      result.push(assemble(X, env));
+    }
+    eval(TEST('unify(result, [])'));
   }
 ];

@@ -3,6 +3,8 @@
 import type {Env} from 'deep6/env.js';
 import type {Rules} from '../solve.js';
 
+export type {AsyncGoalFn} from '../solve.js';
+
 /**
  * Async generator solver. Yields the live `Env` for each solution.
  * Useful when goals contain `await`-bearing inline functions.

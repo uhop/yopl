@@ -81,7 +81,7 @@ A full CJS interop demo lives in `tests/test-cjs.cjs` (run it with `node tests/t
 ## Development
 
 ```bash
-git clone git@github.com:uhop/yopl.git
+git clone https://github.com/uhop/yopl.git
 cd yopl
 npm install
 npm test
@@ -99,3 +99,5 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for the development workflow and [AGENT
 - 1.1.0 — [deep6](https://npmjs.org/package/deep6) was extracted from this package and is now a dependency.
 - 1.0.1 — added the `exports` statement.
 - 1.0.0 — first 1.0 release.
+
+The full release notes are in the wiki: [Release notes](https://github.com/uhop/yopl/wiki/Release-notes).

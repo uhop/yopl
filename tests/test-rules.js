@@ -169,6 +169,30 @@ export default [
   function test_bits_xor_check() {
     eval(TEST('unify(collect(bitsRules, "bitXor", [0b1100, 0b1010, 0b0110]), [true])'));
   },
+  function test_bits_and_check_true() {
+    eval(TEST('unify(collect(bitsRules, "bitAnd", [0b1100, 0b1010, 0b1000]), [true])'));
+  },
+  function test_bits_and_check_false() {
+    eval(TEST('unify(collect(bitsRules, "bitAnd", [0b1100, 0b1010, 0b1111]), [])'));
+  },
+  function test_bits_and_reverse_unsupported() {
+    // bitAnd does not enumerate reverse solutions — multiple X satisfy
+    // X & 0b1010 = 0b1000, so the rule deliberately returns no solutions
+    // when the input is unbound.
+    const X = v('X');
+    eval(TEST('unify(collect(bitsRules, "bitAnd", [X, 0b1010, 0b1000]), [])'));
+  },
+  function test_bits_or_check_true() {
+    eval(TEST('unify(collect(bitsRules, "bitOr", [0b1100, 0b0011, 0b1111]), [true])'));
+  },
+  function test_bits_or_check_false() {
+    eval(TEST('unify(collect(bitsRules, "bitOr", [0b1100, 0b0011, 0b1110]), [])'));
+  },
+  function test_bits_or_reverse_unsupported() {
+    // Same convention as bitAnd: reverse mode returns no solutions.
+    const X = v('X');
+    eval(TEST('unify(collect(bitsRules, "bitOr", [X, 0b0011, 0b1111]), [])'));
+  },
   function test_bits_not_forward() {
     const Y = v('Y');
     eval(TEST('unify(collect(bitsRules, "bitNot", [0b1010, Y], (e, r) => r.push(oneOf(Y, e))), [~0b1010])'));

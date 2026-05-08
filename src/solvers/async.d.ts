@@ -3,6 +3,8 @@
 import type {Env} from 'deep6/env.js';
 import type {Rules} from '../solve.js';
 
+export type {AsyncGoalFn} from '../solve.js';
+
 /** Async callback invoked once per solution. */
 export type AsyncSolveCallback = (env: Env) => void | Promise<void>;
 

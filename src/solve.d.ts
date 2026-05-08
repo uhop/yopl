@@ -23,12 +23,24 @@ export interface TermObject {
  * Inline goal function executed by the solver.
  *
  * Receives the current environment, the current goal frame, and the
- * driver stack. Return values:
+ * driver stack (mutable — control-flow predicates like `cut` and `halt`
+ * splice or rewrite frames). Return values:
  *  - `true`     — succeed and advance to the next goal
  *  - `false`    — fail and trigger backtracking
+ *  - `null`     — succeed and continue with the current goal frame as-is
+ *                 (useful for mid-rule control predicates that don't
+ *                 introduce new goals)
  *  - a goal frame — replace the current continuation
  */
-export type GoalFn = (env: Env, goals: GoalFrame, stack: ReadonlyArray<unknown>) => boolean | GoalFrame | void;
+export type GoalFn = (env: Env, goals: GoalFrame, stack: unknown[]) => boolean | GoalFrame | null | void;
+
+/**
+ * Async variant of `GoalFn` accepted by `solvers/async.js` and
+ * `solvers/asyncGen.js`. The proof loop in those drivers `await`s the
+ * return value, so a goal function may return any of `GoalFn`'s shapes
+ * directly or as a promise.
+ */
+export type AsyncGoalFn = (env: Env, goals: GoalFrame, stack: unknown[]) => boolean | GoalFrame | null | void | Promise<boolean | GoalFrame | null | void>;
 
 /** Linked list of goal frames maintained by the prover. */
 export interface GoalFrame {

@@ -68,5 +68,18 @@ export declare const list: (...args: unknown[]) => unknown;
  */
 export declare const listHead: (...args: unknown[]) => unknown;
 
-/** The system rule library. */
+/**
+ * The system rule library. Well-known keys (spread via
+ * `{...systemRules, ...}` to compose with project rules):
+ *
+ * - **Type predicates** — `isVar`, `isNonVar`, `isNumber`, `isString`,
+ *   `isNull`, `isUndefined`, `isArray`.
+ * - **Equality** — `eq`, `notEq`. Aliases: `unify` (≡ `eq`),
+ *   `notUnifiable` (≡ `notEq`).
+ * - **Control** — `call`, `not`, `isUnifiable`, `conjunction`,
+ *   `disjunction`, `true`, `once`.
+ * - **Extended logic** — `counterExample`, `implies`.
+ * - **Second-order** — `map`, `filter`, `foldl`, `foldr`, `compose`,
+ *   `converse`.
+ */
 export declare const rules: Rules;

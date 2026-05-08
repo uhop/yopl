@@ -8,7 +8,10 @@ runtime dependency, itself a zero-dependency library.
 ## Concepts
 
 - **Goal** — one of: a string (rule name with no args), a structured term `{name, args}`, or
-  an inline JS function `(env, goals, stack) => boolean | GoalFrame`.
+  an inline JS function `(env, goals, stack) => boolean | null | GoalFrame`. Returning `null`
+  succeeds without introducing new goals (useful for control predicates like `cut`). Under the
+  async drivers (`solvers/async.js`, `solvers/asyncGen.js`) inline goals may also return a
+  `Promise` that resolves to any of the above — the proof loop `await`s it.
 - **Rule** — a function (or array of functions for a disjunction) that receives a fresh batch
   of logical variables and returns an array of terms. The first element is the rule head
   (`{args: [...]}`); the rest are body goals.
@@ -148,6 +151,15 @@ for (const env of gen(rules, 'append', [X, Y, target])) {
   console.log(assemble(X, env), '++', assemble(Y, env));
 }
 ```
+
+## Errors
+
+The solver throws when it encounters an unknown predicate at proof time — a
+typo'd rule name in either the initial goal or a body goal surfaces as a
+runtime error rather than producing a silent zero-solution result. To stub
+out a rule deliberately (without crashing callers that reference it), set
+its entry to an explicit `null` in the rules object; the solver treats
+`null` as "no clauses" and skips the goal silently.
 
 ## Conventions
 

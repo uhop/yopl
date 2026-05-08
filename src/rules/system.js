@@ -51,7 +51,7 @@ export const isBound =
 export const head = (...args) => ({args});
 export const term = (name, ...args) => ({name, args});
 
-class Tail {
+export class Tail {
   constructor(value) {
     this.value = value;
   }

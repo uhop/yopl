@@ -14,7 +14,7 @@ to `deep6`, yopl's only runtime dependency (a zero-dependency library).
 
 All rule modules export a spreadable `rules` object:
 
-- `yopl/rules/system.js` — helpers (`head`, `term`, `list`, `listHead`, `rest`) and control predicates (`call`, `cut`, `fail`, `halt`, `isBound`). The `rules` export adds `eq`/`unify`, `notEq`/`notUnifiable`, `not`, `true`, `once`, `conjunction`, `disjunction`, `isVar`/`isNonVar`/`isNumber`/`isString`/`isNull`/`isUndefined`/`isArray`, `counterExample`, `implies`, and the higher-order predicates `map`, `filter`, `foldl`, `foldr`, `compose`, `converse`.
+- `yopl/rules/system.js` — helpers (`head`, `term`, `list`, `listHead`, `rest`, `Tail`) and control predicates (`call`, `cut`, `fail`, `halt`, `isBound`). The `rules` export adds `eq`/`unify`, `notEq`/`notUnifiable`, `not`, `isUnifiable`, `true`, `once`, `conjunction`, `disjunction`, `isVar`/`isNonVar`/`isNumber`/`isString`/`isNull`/`isUndefined`/`isArray`, `counterExample`, `implies`, and the higher-order predicates `map`, `filter`, `foldl`, `foldr`, `compose`, `converse`.
 - `yopl/rules/comp.js` — `lt`, `le`, `gt`, `ge`, `nz`.
 - `yopl/rules/math.js` — `add`, `sub`, `mul`, `div`, `neg` (each reversible).
 - `yopl/rules/bits.js` — `bitAnd`, `bitOr`, `bitXor`, `bitNot`.
