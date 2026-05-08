@@ -1,3 +1,4 @@
+// @ts-self-types="./logic.d.ts"
 import {_} from 'deep6/env.js';
 import {head} from './system.js';
 

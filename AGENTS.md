@@ -18,7 +18,7 @@ For detailed usage docs see the [wiki](https://github.com/uhop/yopl/wiki).
 ## Setup
 
 ```bash
-git clone git@github.com:uhop/yopl.git
+git clone https://github.com/uhop/yopl.git
 cd yopl
 npm install
 ```

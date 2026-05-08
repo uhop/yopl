@@ -1,3 +1,4 @@
+// @ts-self-types="./comp.d.ts"
 import {_} from 'deep6/env.js';
 import {head, cut, fail, isBound} from './system.js';
 

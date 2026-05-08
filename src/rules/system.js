@@ -1,3 +1,4 @@
+// @ts-self-types="./system.d.ts"
 import {_, isVariable} from 'deep6/env.js';
 
 // utilities

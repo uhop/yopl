@@ -1,3 +1,4 @@
+// @ts-self-types="./math.d.ts"
 import {_} from 'deep6/env.js';
 import {head, cut} from './system.js';
 

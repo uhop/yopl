@@ -1,3 +1,4 @@
+// @ts-self-types="./asyncGen.d.ts"
 import unify, {Env, variable} from 'deep6/unify.js';
 
 let counter = 0;
