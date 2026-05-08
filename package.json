@@ -62,10 +62,10 @@
     "ARCHITECTURE.md"
   ],
   "dependencies": {
-    "deep6": "^1.2.1"
+    "deep6": "^1.2.2"
   },
   "devDependencies": {
-    "prettier": "^3.8.1",
-    "typescript": "^6.0.2"
+    "prettier": "^3.8.3",
+    "typescript": "^6.0.3"
   }
 }
