@@ -89,23 +89,31 @@ export default [
     const expected = [null, makeList([1, 2, 3]), makeList([1]), makeList([2, 3]), makeList([1, 2]), makeList([3]), makeList([1, 2, 3]), null];
     eval(TEST('unify(result, expected)'));
   },
-  function test_solve_no_match() {
-    // Goal name that has no matching rule should produce no callback invocations.
+  function test_solve_no_match_throws() {
+    // A goal name with no matching rule throws — typos surface as errors
+    // rather than producing silent zero-solution runs.
     const rules = {'one/1': () => [{args: [1]}]},
-      X = v('X'),
-      result = [];
-    solve(rules, 'unknown/1', [X], () => result.push(true));
-    eval(TEST('unify(result, [])'));
+      X = v('X');
+    let caught = false;
+    try {
+      solve(rules, 'unknown/1', [X], () => {});
+    } catch (_e) {
+      caught = true;
+    }
+    eval(TEST('caught'));
   },
-  function test_solve_unknown_subgoal() {
-    // A rule body that calls an unknown predicate fails the surrounding goal
-    // chain (rather than crashing).
+  function test_solve_unknown_subgoal_throws() {
+    // An unknown predicate referenced in a rule body throws when reached.
     const rules = {
         outer: X => [{args: [X]}, {name: 'unknown', args: [X]}]
       },
-      X = v('X'),
-      result = [];
-    solve(rules, 'outer', [X], () => result.push(true));
-    eval(TEST('unify(result, [])'));
+      X = v('X');
+    let caught = false;
+    try {
+      solve(rules, 'outer', [X], () => {});
+    } catch (_e) {
+      caught = true;
+    }
+    eval(TEST('caught'));
   }
 ];

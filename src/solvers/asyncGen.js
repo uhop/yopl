@@ -60,7 +60,7 @@ async function* prove(rules, goals, env) {
       goal = {name: goal};
     }
     let ruleList = rules[goal.name];
-    if (ruleList == null) continue main;
+    if (ruleList === null) continue main;
     if (!Array.isArray(ruleList)) ruleList = [ruleList];
     stack.push({command: 2, ruleList, index: 0, goals, args: goal.args || NO_ARGS});
   }

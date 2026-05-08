@@ -104,7 +104,7 @@ export const rules = {
   // control predicates
   call: X => [head(X), call(X)],
   not: [(X, ...sys) => [head(X), call(X), cut(sys), fail], () => [head(_)]],
-  isUnifiable: (X, Y) => [head(X, Y), term('not', term('not', term('eq', [X, Y])))],
+  isUnifiable: (X, Y) => [head(X, Y), term('not', term('not', term('eq', X, Y)))],
   // notUnifiable is notEq
   conjunction: [() => [head(null)], (X, Xt) => [head(listHead(X, Xt)), call(X), term('conjunction', Xt)]],
   disjunction: [X => [head(listHead(X, _)), call(X)], Xt => [head(listHead(_, Xt)), term('disjunction', Xt)]],
@@ -120,11 +120,11 @@ export const rules = {
 
   // second-order logic
   // map, filter, foldl, foldr, compose, converse
-  map: [() => [head(_, null, null)], (F, X, Xt, Y, Yt) => [head(F, listHead(X, Xt), listHead(Y, Yt)), call(term(F, X, Y)), term('map', Xt, Yt)]],
+  map: [() => [head(_, null, null)], (F, X, Xt, Y, Yt) => [head(F, listHead(X, Xt), listHead(Y, Yt)), call(term(F, X, Y)), term('map', F, Xt, Yt)]],
   filter: [
     () => [head(_, null, null)],
-    (P, X, Xt, Yt) => [head(P, listHead(X, Xt), listHead(X, Yt)), term(P, X), term('filter', Xt, Yt)],
-    (P, X, Xt, Yt) => [head(P, listHead(X, Xt), listHead(X, Yt)), term('not', term(P, X)), term('filter', Xt, Yt)]
+    (P, X, Xt, Yt) => [head(P, listHead(X, Xt), listHead(X, Yt)), call(term(P, X)), term('filter', P, Xt, Yt)],
+    (P, X, Xt, Yt) => [head(P, listHead(X, Xt), Yt), term('not', term(P, X)), term('filter', P, Xt, Yt)]
   ],
   foldl: [A => [head(_, A, null, A)], (F, A, X, Xt, O, B) => [head(F, A, listHead(X, Xt), O), call(term(F, A, X, B)), term('foldl', F, B, Xt, O)]],
   foldr: [A => [head(_, A, null, A)], (F, A, X, Xt, O, T) => [head(F, A, listHead(X, Xt), O), term('foldr', F, A, Xt, T), call(term(F, X, T, O))]],

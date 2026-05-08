@@ -172,5 +172,201 @@ export default [
     result = [];
     solve(rules, 'bothBound', [X, 2], () => result.push(true));
     eval(TEST('unify(result, [])'));
+  },
+  function test_null_rule_silently_fails() {
+    // An explicit `null` rule entry means "no clauses" and silently fails
+    // (zero solutions, no throw). Same behaviour as `undefined` per the
+    // existing `test_solve_no_match` / `test_solve_unknown_subgoal` spec —
+    // recorded here to pin the explicit-null sentinel form.
+    const result = [];
+    solve({silenced: null}, 'silenced', [], () => result.push(true));
+    eval(TEST('unify(result, [])'));
+  },
+  function test_higher_order_map_applies_predicate() {
+    // map(inc, [1, 2, 3], Out) → Out = [2, 3, 4].
+    const rules = {
+      ...systemRules,
+      inc: (X, Y) => [
+        head(X, Y),
+        env => {
+          env.bindVal(Y.name, X.get(env) + 1);
+          return true;
+        }
+      ]
+    };
+    const Out = v('Out'),
+      result = [];
+    solve(rules, 'map', ['inc', list(1, 2, 3), Out], env => result.push(assemble(Out, env)));
+    eval(TEST('unify(result, [makeList([2, 3, 4])])'));
+  },
+  function test_higher_order_filter_drops_failing() {
+    // filter(isEven, [1, 2, 3, 4], Out) → Out = [2, 4].
+    // Repro: before the system.js:127 fix, the reject clause kept the
+    // failing element instead of dropping it, so Out came back as [1,2,3,4].
+    const rules = {
+      ...systemRules,
+      isEven: X => [head(X), env => X.isBound(env) && X.get(env) % 2 === 0]
+    };
+    const Out = v('Out'),
+      result = [];
+    solve(rules, 'filter', ['isEven', list(1, 2, 3, 4), Out], env => result.push(assemble(Out, env)));
+    eval(TEST('unify(result, [makeList([2, 4])])'));
+  },
+  function test_higher_order_filter_empty() {
+    // filter on an empty list returns the empty list.
+    const rules = {
+      ...systemRules,
+      isEven: X => [head(X), env => X.isBound(env) && X.get(env) % 2 === 0]
+    };
+    const Out = v('Out'),
+      result = [];
+    solve(rules, 'filter', ['isEven', null, Out], env => result.push(assemble(Out, env)));
+    eval(TEST('unify(result, [null])'));
+  },
+  function test_higher_order_filter_all_drop() {
+    // filter where the predicate rejects every element returns the empty list.
+    const rules = {
+      ...systemRules,
+      isEven: X => [head(X), env => X.isBound(env) && X.get(env) % 2 === 0]
+    };
+    const Out = v('Out'),
+      result = [];
+    solve(rules, 'filter', ['isEven', list(1, 3, 5), Out], env => result.push(assemble(Out, env)));
+    eval(TEST('unify(result, [null])'));
+  },
+  function test_higher_order_foldl_sum() {
+    // foldl(add, 0, [1, 2, 3], Out) → Out = ((0+1)+2)+3 = 6.
+    const rules = {
+      ...systemRules,
+      add: (A, X, B) => [
+        head(A, X, B),
+        env => {
+          env.bindVal(B.name, A.get(env) + X.get(env));
+          return true;
+        }
+      ]
+    };
+    const Out = v('Out'),
+      result = [];
+    solve(rules, 'foldl', ['add', 0, list(1, 2, 3), Out], env => result.push(assemble(Out, env)));
+    eval(TEST('unify(result, [6])'));
+  },
+  function test_higher_order_foldr_sum() {
+    // foldr(add, 0, [1, 2, 3], Out) — note arg order: foldr passes (X, A, B).
+    const rules = {
+      ...systemRules,
+      add: (X, A, B) => [
+        head(X, A, B),
+        env => {
+          env.bindVal(B.name, X.get(env) + A.get(env));
+          return true;
+        }
+      ]
+    };
+    const Out = v('Out'),
+      result = [];
+    solve(rules, 'foldr', ['add', 0, list(1, 2, 3), Out], env => result.push(assemble(Out, env)));
+    eval(TEST('unify(result, [6])'));
+  },
+  function test_higher_order_compose() {
+    // compose(inc, double, 5, Out) → inc(double(5)) = inc(10) = 11.
+    const rules = {
+      ...systemRules,
+      inc: (X, Y) => [
+        head(X, Y),
+        env => {
+          env.bindVal(Y.name, X.get(env) + 1);
+          return true;
+        }
+      ],
+      double: (X, Y) => [
+        head(X, Y),
+        env => {
+          env.bindVal(Y.name, X.get(env) * 2);
+          return true;
+        }
+      ]
+    };
+    const Out = v('Out'),
+      result = [];
+    solve(rules, 'compose', ['inc', 'double', 5, Out], env => result.push(assemble(Out, env)));
+    eval(TEST('unify(result, [11])'));
+  },
+  function test_higher_order_converse() {
+    // converse(F)(X, Y, O) = F(Y, X, O); converse(sub, 3, 10, R) = sub(10, 3, R) = 7.
+    const rules = {
+      ...systemRules,
+      sub: (A, B, R) => [
+        head(A, B, R),
+        env => {
+          env.bindVal(R.name, A.get(env) - B.get(env));
+          return true;
+        }
+      ]
+    };
+    const Out = v('Out'),
+      result = [];
+    solve(rules, 'converse', ['sub', 3, 10, Out], env => result.push(assemble(Out, env)));
+    eval(TEST('unify(result, [7])'));
+  },
+  function test_higher_order_conjunction() {
+    // conjunction([eq(1,1), eq(2,2)]) succeeds; one failure aborts.
+    let result = [];
+    solve(systemRules, 'conjunction', [list(term('eq', 1, 1), term('eq', 2, 2))], () => result.push(true));
+    eval(TEST('unify(result, [true])'));
+    result = [];
+    solve(systemRules, 'conjunction', [list(term('eq', 1, 1), term('eq', 1, 2))], () => result.push(true));
+    eval(TEST('unify(result, [])'));
+  },
+  function test_higher_order_disjunction() {
+    // disjunction succeeds if any element succeeds; fails if all fail.
+    let result = [];
+    solve(systemRules, 'disjunction', [list(term('eq', 1, 2), term('eq', 1, 1))], () => result.push(true));
+    eval(TEST('unify(result, [true])'));
+    result = [];
+    solve(systemRules, 'disjunction', [list(term('eq', 1, 2), term('eq', 3, 4))], () => result.push(true));
+    eval(TEST('unify(result, [])'));
+  },
+  function test_higher_order_once() {
+    // once wraps call+cut: yields the first solution only, suppressing
+    // backtracking through alternatives.
+    const rules = {
+      ...systemRules,
+      pick: [() => [head(10)], () => [head(20)], () => [head(30)]]
+    };
+    const X = v('X'),
+      result = [];
+    solve(rules, 'once', [term('pick', X)], env => result.push(assemble(X, env)));
+    eval(TEST('unify(result, [10])'));
+  },
+  function test_higher_order_counterExample() {
+    // counterExample(A, B) holds when A succeeds and B fails — A is a
+    // witness for which B is false.
+    let result = [];
+    solve(systemRules, 'counterExample', [term('eq', 1, 1), term('eq', 1, 2)], () => result.push(true));
+    eval(TEST('unify(result, [true])'));
+    result = [];
+    solve(systemRules, 'counterExample', [term('eq', 1, 1), term('eq', 1, 1)], () => result.push(true));
+    eval(TEST('unify(result, [])'));
+  },
+  function test_higher_order_implies() {
+    // implies(A, B) holds when there is no counterexample to "A → B".
+    let result = [];
+    solve(systemRules, 'implies', [term('eq', 1, 1), term('eq', 1, 1)], () => result.push(true));
+    eval(TEST('unify(result, [true])'));
+    result = [];
+    solve(systemRules, 'implies', [term('eq', 1, 1), term('eq', 1, 2)], () => result.push(true));
+    eval(TEST('unify(result, [])'));
+  },
+  function test_higher_order_isUnifiable() {
+    // isUnifiable(X, Y) succeeds iff X and Y are unifiable, but leaves them
+    // unbound. Compare with eq, which would commit the binding.
+    const X = v('X');
+    let result = [];
+    solve(systemRules, 'isUnifiable', [X, 7], env => result.push(X.isBound(env) ? 'bound' : 'unbound'));
+    eval(TEST('unify(result, ["unbound"])'));
+    result = [];
+    solve(systemRules, 'isUnifiable', [1, 2], () => result.push(true));
+    eval(TEST('unify(result, [])'));
   }
 ];
