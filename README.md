@@ -6,7 +6,8 @@
 `yopl` is an ES6 mini-library that implements a Prolog-style logic solver in JavaScript. It provides:
 
 - A small core solver with multiple driver styles: callback, generator, async callback, async generator.
-- A built-in rule library: helpers and control predicates, comparisons, arithmetic, bitwise, and boolean logic.
+- A built-in rule library: helpers and control predicates, comparisons, arithmetic, bitwise, boolean logic, and JS-native bridges (Array / Map / Set / Date).
+- A rule compiler with a per-clause tagged-template DSL — write rules declaratively, catch arity drift at compile time.
 
 Its only runtime dependency is [`deep6`](https://www.npmjs.com/package/deep6), itself a zero-dependency library that provides the unification engine.
 
@@ -54,17 +55,22 @@ solve(rules, 'member', [list, X], env => {
 
 ## Modules
 
-| Module                     | Purpose                                                                         |
-| -------------------------- | ------------------------------------------------------------------------------- |
-| `yopl` (`src/solve.js`)    | Synchronous callback solver — main entry point.                                 |
-| `yopl/solvers/gen.js`      | Synchronous generator solver.                                                   |
-| `yopl/solvers/async.js`    | Async callback solver.                                                          |
-| `yopl/solvers/asyncGen.js` | Async generator solver.                                                         |
-| `yopl/rules/system.js`     | Helpers + control predicates (`head`, `term`, `list`, `cut`, `call`, `not`, …). |
-| `yopl/rules/comp.js`       | Comparisons: `lt`, `le`, `gt`, `ge`, `nz`.                                      |
-| `yopl/rules/math.js`       | Arithmetic: `add`, `sub`, `mul`, `div`, `neg`.                                  |
-| `yopl/rules/bits.js`       | Bitwise: `bitAnd`, `bitOr`, `bitXor`, `bitNot`.                                 |
-| `yopl/rules/logic.js`      | Boolean logic: `logicalAnd`, `logicalOr`, `logicalXor`, `logicalNot`.           |
+| Module                         | Purpose                                                                                               |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| `yopl` (`src/solve.js`)        | Synchronous callback solver — main entry point.                                                       |
+| `yopl/solvers/gen.js`          | Synchronous generator solver.                                                                         |
+| `yopl/solvers/async.js`        | Async callback solver.                                                                                |
+| `yopl/solvers/asyncGen.js`     | Async generator solver.                                                                               |
+| `yopl/compile/clause/index.js` | Per-clause tagged-template DSL: `rule(name, arity)(clause`...`)`.                                     |
+| `yopl/compile/ir.js`           | IR constructors (`Var`, `Lit`, `Compound`, …) + re-exports (`open`, `soft`, `_`).                     |
+| `yopl/compile/lower.js`        | IR → runtime rule functions (incl. the `Lit`-walker for nested IR).                                   |
+| `yopl/compile/validate.js`     | Static-bug-class checks (arity, call-arity, undeclared vars, duplicate rules).                        |
+| `yopl/rules/system.js`         | Generic logic primitives: helpers + `eq`, `notEq`, `unifyOpts`, `not`, `map`, `filter`, type tests, … |
+| `yopl/rules/native.js`         | JS-native bridges: `Array` / `Map` / `Set` / `Date` predicates + type tests (`isArray`, `isMap`, …).  |
+| `yopl/rules/comp.js`           | Comparisons: `lt`, `le`, `gt`, `ge`, `nz`.                                                            |
+| `yopl/rules/math.js`           | Arithmetic: `add`, `sub`, `mul`, `div`, `neg` (each reversible).                                      |
+| `yopl/rules/bits.js`           | Bitwise: `bitAnd`, `bitOr`, `bitXor`, `bitNot`.                                                       |
+| `yopl/rules/logic.js`          | Boolean logic: `logicalAnd`, `logicalOr`, `logicalXor`, `logicalNot`.                                 |
 
 Per-module documentation lives in the [wiki](https://github.com/uhop/yopl/wiki).
 
