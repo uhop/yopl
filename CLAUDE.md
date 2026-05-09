@@ -9,7 +9,6 @@
 3. **Quick API** → [llms.txt](./llms.txt) — concise API reference for LLMs
 4. **Full API** → [llms-full.txt](./llms-full.txt) — complete API reference with examples
 5. **Usage** → [README.md](./README.md) — installation and examples
-6. **Codebase Quick Ref** → [CODEBASE.md](./CODEBASE.md) — one-liner, entry points, key patterns
 
 ## Commands
 
@@ -24,7 +23,8 @@
 
 - Rule-based logic programming
 - Multiple driver styles (sync generator, async callback, async generator)
-- A built-in rule library (logic, comparison, arithmetic, bitwise, system)
+- A built-in rule library (logic, comparison, arithmetic, bitwise, system, native)
+- A rule compiler with per-clause tagged-template DSL (`yopl/compile/`)
 - Unification powered by [`deep6`](https://www.npmjs.com/package/deep6) — its only runtime dependency
 
 ## Key Conventions
@@ -47,11 +47,17 @@ import solveAsync from 'yopl/solvers/async.js';
 import solveAsyncGen from 'yopl/solvers/asyncGen.js';
 
 // Built-in rules
-import logic from 'yopl/rules/logic.js';
-import comp from 'yopl/rules/comp.js';
-import math from 'yopl/rules/math.js';
-import bits from 'yopl/rules/bits.js';
-import system from 'yopl/rules/system.js';
+import {rules as logicRules} from 'yopl/rules/logic.js';
+import {rules as compRules} from 'yopl/rules/comp.js';
+import {rules as mathRules} from 'yopl/rules/math.js';
+import {rules as bitsRules} from 'yopl/rules/bits.js';
+import {rules as systemRules} from 'yopl/rules/system.js';
+import {rules as nativeRules} from 'yopl/rules/native.js';
+
+// Rule compiler — declarative DSL
+import {rule, clause} from 'yopl/compile/clause/index.js';
+import {Var, Lit} from 'yopl/compile/ir.js';
+import {lowerRules} from 'yopl/compile/lower.js';
 ```
 
 ## For AI Assistants
@@ -61,5 +67,5 @@ When working on yopl:
 1. Read [AGENTS.md](./AGENTS.md) first for rules and constraints
 2. Consult [ARCHITECTURE.md](./ARCHITECTURE.md) for module relationships
 3. Use [llms.txt](./llms.txt) for quick API lookup
-4. Reference [CODEBASE.md](./CODEBASE.md) for algorithm details
+4. Reference `dev-docs/compiler-ir.md` and `dev-docs/native-objects.md` for compiler / native-bridge design
 5. Run `npm test` and `npm run lint:fix` after any changes

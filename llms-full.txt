@@ -56,11 +56,67 @@ for await (const env of asyncGen(rules, name, args)) { /* … */ }
 
 Async generator solver.
 
+## Rule compiler
+
+`yopl/compile/` ships a pure-data IR plus a per-clause tagged-template front-end. Rules are
+defined as `rule(name, arity)(clause\`...\`, clause\`...\`)` and lowered into the runtime
+shape `solve()` expects. The IR has 5 Term kinds (`var`, `wildcard`, `literal`, `cons`,
+`compound`) and 4 Goal kinds (`call`, `cut`, `fail`, `js`). See `dev-docs/compiler-ir.md`
+for the design.
+
+### `yopl/compile/ir.js`
+
+IR constructors and re-exports.
+
+- `Var(name?)` — logic variable. Without a name argument, mints a fresh `Symbol`-named
+  anonymous variable.
+- `Wild()`, `Lit(value)`, `Cons(head, tail)`, `Compound(name, args?)`.
+- `List(items, tail?)` — convenience that builds a cons-list from an array.
+- `Call(name, args?)`, `Cut()`, `Fail()`, `Js(factory)` — goal IR.
+- `Clause(head, body?, vars?)`, `Rule(name, arity, clauses)`.
+- `collectVars(clause)` — declaration-order var name list.
+- `IR_KINDS` — closed set used by the Lit-walker.
+- `open` / `soft` / `_` (also exported as `any`) — re-exported from `deep6` for fine-grained
+  per-value match control on `Lit`-wrapped values. `Lit(open({...}))` locks subset matching;
+  `Lit(soft({...}))` extends both sides.
+
+### `yopl/compile/clause/index.js`
+
+Per-clause tagged-template DSL. `rule(name, arity)(...clauses)` returns an IR `Rule`; each
+clause is built via `clause\`HEAD :- BODY\`` (body optional). Inside a clause:
+
+- Uppercase identifiers parse as logic Variables (`X`, `_user`).
+- `_` is the wildcard.
+- `[X | T]` is cons-list sugar; `[1, 2, 3]` is a fully-grounded list.
+- `!` is cut, `fail` is the fail goal.
+- `${...}` interpolates IR or auto-wraps:
+  - in arg position: primitives → `Lit(value)`; IR nodes pass through; everything else throws.
+  - in goal position: function → `Js(factory)`; IR pass-through; everything else throws.
+- Strings can't span interpolation slots — wrap dynamic strings outside: `${'item' + i}`.
+
+### `yopl/compile/lower.js`
+
+`lowerRules(rules)` and `lowerRule(rule)` produce the runtime rule dict. Each clause is
+walked per activation with fresh logic Variables.
+
+The **Lit-walker** descends into plain objects and arrays inside `Lit(value)` and
+recursively lowers any nested IR node (`Var`, `Wild`, `Lit`, `Cons`, `Compound`). So
+`Lit({age: Var('A')})` matches an incoming object's `age` field and binds `A` per
+activation. `Maps`/`Sets`/`Date`s/class instances/`Wrap`-wrapped values pass through.
+IR-node detection is gated on the closed `IR_KINDS` set, so user objects with a `kind`
+field that isn't an IR discriminator are safe.
+
+### `yopl/compile/validate.js`
+
+`validate(rules, options?)` returns an array of issue objects. Issue kinds: `arity-mismatch`,
+`call-arity-mismatch`, `undeclared-var`, `duplicate-rule`, `unresolved-rule` (opt-in via
+`options.checkRuleReferences`). `validateOrThrow(...)` raises on the first non-empty result.
+
 ## Rule libraries
 
 ### `yopl/rules/system.js`
 
-Helpers and control predicates.
+Generic logic-programming primitives.
 
 **Term builders:**
 
@@ -80,11 +136,57 @@ Helpers and control predicates.
 
 **`rules` object** — spreadable rule database:
 
-- *Type tests:* `isVar`, `isNonVar`, `isNumber`, `isString`, `isNull`, `isUndefined`, `isArray`.
+- *Generic type tests:* `isVar`, `isNonVar`, `isNumber`, `isString`, `isNull`, `isUndefined`. (For JS-native type tests like `isArray`, `isMap`, `isSet`, `isDate` see `yopl/rules/native.js`.)
 - *Equality:* `eq` (alias `unify`), `notEq` (alias `notUnifiable`).
+- *Per-call options:* `unifyOpts(X, Y, Opts)` — runs deep6 unification with a per-call
+  options bag (`{openObjects, openArrays, openMaps, openSets, circular, loose,
+  ignoreFunctions, signedZero, symbols}`); env baseline restored before the goal returns.
+  Pass options as `${Lit({openArrays: true})}` from clause source, or as a plain object
+  at the runtime boundary.
 - *Control:* `call`, `not`, `isUnifiable`, `conjunction`, `disjunction`, `true`, `once`.
 - *Extended logic:* `counterExample`, `implies`.
 - *Higher-order:* `map`, `filter`, `foldl`, `foldr`, `compose`, `converse`.
+
+### `yopl/rules/native.js`
+
+JS-native bridges — predicates over `Array`, `Map`, `Set`, `Date`. Compose by spreading
+alongside `systemRules`. See `dev-docs/native-objects.md` for the full design and roadmap.
+
+**Type tests:**
+
+- `isArray(X)` — succeeds when X is bound to a JS Array.
+- `isMap(X)` — succeeds when X is bound to a `Map` instance.
+- `isSet(X)` — succeeds when X is bound to a `Set` instance.
+- `isDate(X)` — succeeds when X is bound to a `Date` instance.
+- All four require X to be bound; otherwise fail.
+
+**Array:**
+
+- `arrayList(A, L)` — bidirectional. Bind whichever side is unbound.
+- `arrayGet(A, I, X)` — forward indexed lookup; A and I bound; out-of-bounds fails.
+- `arraySet(A, I, X, A2)` — immutable single-index override; in-bounds replace or
+  append-at-end (I === A.length); out-of-bounds with hole creation rejected.
+- `arrayLength(A, N)` — A bound → N binds.
+
+**Map:**
+
+- `mapEntries(M, Es)` — bidirectional. M bound → Es is a cons-list of `[K, V]` pairs in
+  M's iteration order. Es bound → M is a `Map` from those pairs (order-independent).
+- `mapGet(M, K, V)` — forward lookup.
+- `mapHas(M, K)` — membership.
+
+**Set:**
+
+- `setItems(S, Items)` — bidirectional. Both-bound case unifies as Sets.
+- `setHas(S, X)` — membership.
+
+**Date:**
+
+- `dateTimestamp(D, Ms)` — bidirectional D ↔ epoch ms (TZ-agnostic).
+- `dateComponents(D, C)` — bidirectional D ↔ component bag (local time). `C` is a JS
+  object with optional fields `{year, month, day, hour, minute, second, ms}`. Month is
+  0-based. Pairs cleanly with the Lit-walker for partial-bag pattern matching.
+- `dateComponentsUTC(D, C)` — same as above, UTC.
 
 ### `yopl/rules/comp.js`
 
@@ -98,7 +200,9 @@ between its arguments, and any one missing operand can be solved for.
 
 ### `yopl/rules/bits.js`
 
-Bitwise: `bitAnd`, `bitOr` (forward only), `bitXor`, `bitNot` (reversible).
+Bitwise: `bitAnd` (forward only), `bitOr` (forward + zero-identity reverse via `(0, Y, Y)` /
+`(X, 0, X)` facts), `bitXor` (fully reversible plus all three XOR identities), `bitNot`
+(fully reversible).
 
 ### `yopl/rules/logic.js`
 

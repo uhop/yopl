@@ -10,7 +10,6 @@
 - **Architecture:** [ARCHITECTURE.md](./ARCHITECTURE.md) — module map, dependency graph, algorithm details
 - **Quick API:** [llms.txt](./llms.txt) — concise API reference for LLMs
 - **Full API:** [llms-full.txt](./llms-full.txt) — complete API reference with examples
-- **Codebase Quick Ref:** [CODEBASE.md](./CODEBASE.md) — one-liner, entry points, key patterns
 - **Usage:** [README.md](./README.md) — installation and examples
 
 For detailed usage docs see the [wiki](https://github.com/uhop/yopl/wiki).
@@ -43,13 +42,21 @@ yopl/
 │   │   ├── gen.js        # Synchronous generator-based solver
 │   │   ├── async.js      # Async callback-based solver
 │   │   └── asyncGen.js   # Async generator-based solver
+│   ├── compile/          # Rule compiler (IR + lowering + per-clause DSL)
+│   │   ├── ir.js         # 5 Term + 4 Goal IR kinds, Clause, Rule, IR_KINDS
+│   │   ├── lower.js      # IR → runtime rule fns (incl. the Lit-walker)
+│   │   ├── validate.js   # Static-bug-class checks (arity, call-arity, vars, dupes)
+│   │   └── clause/       # Per-clause tagged-template DSL: rule(name, arity)(clause`...`)
 │   └── rules/            # Built-in rule library
 │       ├── logic.js      # Logical connectives
 │       ├── comp.js       # Comparison rules
 │       ├── math.js       # Arithmetic rules
 │       ├── bits.js       # Bitwise rules
-│       └── system.js     # System / utility rules
+│       ├── system.js     # Generic logic predicates
+│       └── native.js     # JS bridges (Array / Map / Set / Date predicates)
+├── bench/                # Performance benchmarks (nano-benchmark)
 ├── tests/                # Test files (grouped test-*.js, dispatched by tests.js)
+├── dev-docs/             # Internal design notes (compiler-ir.md, native-objects.md, …)
 └── .github/              # CI workflows, funding, dependabot
 ```
 
@@ -76,12 +83,25 @@ yopl/
   - `gen.js` — synchronous generator yielding one `Env` per solution.
   - `async.js` — async callback-based driver for `await`-bearing predicates.
   - `asyncGen.js` — async generator combining the two.
-- **Rule library** (`src/rules/`) — built-in predicates:
-  - `system.js` — helpers (`head`, `term`, `list`, `listHead`, `rest`) and control predicates
-    (`call`, `cut`, `fail`, `halt`, `isBound`, `not`, `true`, `eq`, `once`, `map`, `filter`,
-    `foldl`, `foldr`, …).
+- **Rule compiler** (`src/compile/`) — pure-data IR plus a lowering pass. Rules are written as
+  `rule(name, arity)(clause...)` using the per-clause tagged-template DSL. The IR has 5 Term
+  kinds + 4 Goal kinds. Lowering substitutes activation-fresh logic Variables; the
+  **`Lit`-walker** descends into plain objects and arrays inside a literal's value, so a
+  template like `Lit({age: Var('A')})` doubles as a pattern matcher and a constructor.
+  Re-exports `open` / `soft` / `_` from `deep6` for fine-grained match control. Front-ends
+  emit IR; the runtime never sees IR. Design: `dev-docs/compiler-ir.md`.
+- **Rule library** (`src/rules/`) — built-in predicates split by domain:
+  - `system.js` — generic logic-programming: helpers (`head`, `term`, `list`, `listHead`,
+    `rest`), control (`call`, `cut`, `fail`, `halt`, `isBound`, `not`, `true`, `once`, `eq`,
+    `notEq`, `unifyOpts`, `isUnifiable`, `conjunction`, `disjunction`, `counterExample`,
+    `implies`), type tests (`isVar`, `isNonVar`, `isNumber`, `isString`, `isNull`,
+    `isUndefined`), higher-order (`map`, `filter`, `foldl`, `foldr`, `compose`, `converse`).
+  - `native.js` — JS-native bridges (Array / Map / Set / Date). Type tests: `isArray`,
+    `isMap`, `isSet`, `isDate`. Array: `arrayList`, `arrayGet`, `arraySet`, `arrayLength`.
+    Map: `mapEntries`, `mapGet`, `mapHas`. Set: `setItems`, `setHas`. Date: `dateTimestamp`,
+    `dateComponents`, `dateComponentsUTC`. Design: `dev-docs/native-objects.md`.
   - `comp.js` — comparisons (`lt`/`le`/`gt`/`ge`, `nz`).
-  - `math.js` — arithmetic (`add`/`sub`/`mul`/`div`/`neg`).
+  - `math.js` — arithmetic (`add`/`sub`/`mul`/`div`/`neg`); each reversible.
   - `bits.js` — bitwise (`bitAnd`/`bitOr`/`bitXor`/`bitNot`).
   - `logic.js` — boolean logic (`logicalAnd`/`logicalOr`/`logicalXor`/`logicalNot`).
 

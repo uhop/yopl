@@ -10,11 +10,33 @@ to `deep6`, yopl's only runtime dependency (a zero-dependency library).
 - `yopl/solvers/async.js` — async callback solver. `asyncSolve(rules, name, args, async callback)`.
 - `yopl/solvers/asyncGen.js` — async generator solver. `asyncGen(rules, name, args)` → `AsyncGenerator<Env>`.
 
+## Rule compiler
+
+Rules can be defined declaratively via the per-clause tagged-template DSL:
+
+```js
+import {rule, clause} from 'yopl/compile/clause/index.js';
+import {Lit, Var} from 'yopl/compile/ir.js';
+import {lowerRules} from 'yopl/compile/lower.js';
+
+const rules = lowerRules([
+  rule('member', 2)(
+    clause`(X, [X | _])`,
+    clause`(X, [_ | T]) :- member(X, T)`
+  )
+]);
+```
+
+The IR has 5 Term kinds (`var`, `wildcard`, `literal`, `cons`, `compound`) and 4 Goal kinds (`call`, `cut`, `fail`, `js`). The **Lit-walker** lowers `Lit({age: Var('A')})` per activation — Vars nested in plain objects/arrays inside a Lit get fresh activation Variables, so object literals double as pattern matchers. Maps, Sets, Dates, and `Wrap`-wrapped values pass through unchanged. `yopl/compile/ir.js` re-exports `open` / `soft` / `_` from `deep6` for fine-grained match control.
+
+See `dev-docs/compiler-ir.md` for the full design.
+
 ## Rule libraries
 
 All rule modules export a spreadable `rules` object:
 
-- `yopl/rules/system.js` — helpers (`head`, `term`, `list`, `listHead`, `rest`, `Tail`) and control predicates (`call`, `cut`, `fail`, `halt`, `isBound`). The `rules` export adds `eq`/`unify`, `notEq`/`notUnifiable`, `not`, `isUnifiable`, `true`, `once`, `conjunction`, `disjunction`, `isVar`/`isNonVar`/`isNumber`/`isString`/`isNull`/`isUndefined`/`isArray`, `counterExample`, `implies`, and the higher-order predicates `map`, `filter`, `foldl`, `foldr`, `compose`, `converse`.
+- `yopl/rules/system.js` — helpers (`head`, `term`, `list`, `listHead`, `rest`, `Tail`) and control predicates (`call`, `cut`, `fail`, `halt`, `isBound`). The `rules` export adds `eq`/`unify`, `notEq`/`notUnifiable`, `unifyOpts` (per-call options bag), `not`, `isUnifiable`, `true`, `once`, `conjunction`, `disjunction`, generic type tests (`isVar`, `isNonVar`, `isNumber`, `isString`, `isNull`, `isUndefined`), `counterExample`, `implies`, and the higher-order predicates `map`, `filter`, `foldl`, `foldr`, `compose`, `converse`.
+- `yopl/rules/native.js` — JS-native bridges. **Type tests:** `isArray`, `isMap`, `isSet`, `isDate`. **Array:** `arrayList` (bidir array ↔ cons list), `arrayGet` (forward indexed lookup), `arraySet` (immutable single-index override), `arrayLength`. **Map:** `mapEntries` (bidir M ↔ list of `[K, V]` pairs), `mapGet`, `mapHas`. **Set:** `setItems` (bidir S ↔ list), `setHas`. **Date:** `dateTimestamp` (bidir D ↔ epoch ms), `dateComponents` / `dateComponentsUTC` (bidir D ↔ component bag, local + UTC variants). See `dev-docs/native-objects.md`.
 - `yopl/rules/comp.js` — `lt`, `le`, `gt`, `ge`, `nz`.
 - `yopl/rules/math.js` — `add`, `sub`, `mul`, `div`, `neg` (each reversible).
 - `yopl/rules/bits.js` — `bitAnd`, `bitOr`, `bitXor`, `bitNot`.
@@ -28,3 +50,4 @@ All rule modules export a spreadable `rules` object:
 - A rule body returns an array of terms whose first element is the head and whose remaining
   elements are body goals. A goal is a string, a `{name, args}` term, or an inline
   `(env, goals, stack) => boolean | GoalFrame` function.
+- Prefer the rule compiler (`yopl/compile/clause/index.js`) for new rules — it catches static-arity bugs and emits the right `call(...)` wrapping automatically.

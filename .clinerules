@@ -1,60 +1,130 @@
 <!-- Canonical source: AGENTS.md — keep this file in sync -->
-# yopl — AI Agent Rules
 
-## Project identity
+# AGENTS.md — yopl
 
-`yopl` is an ES6 mini-library that implements a logic solver in the style of Prolog. It provides
-rule-based logic programming with both callback and generator styles. Its only runtime dependency
-is [`deep6`](https://www.npmjs.com/package/deep6) (a zero-dependency library) for unification.
+> `yopl` is an ES6 mini-library implementing a Prolog-style logic solver. It supports rule-based
+> logic programming with both callback and generator drivers. Its only runtime dependency is
+> [`deep6`](https://www.npmjs.com/package/deep6), itself a zero-dependency library that provides
+> the unification engine.
+
+## AI Documentation
+
+- **Architecture:** [ARCHITECTURE.md](./ARCHITECTURE.md) — module map, dependency graph, algorithm details
+- **Quick API:** [llms.txt](./llms.txt) — concise API reference for LLMs
+- **Full API:** [llms-full.txt](./llms-full.txt) — complete API reference with examples
+- **Usage:** [README.md](./README.md) — installation and examples
+
+For detailed usage docs see the [wiki](https://github.com/uhop/yopl/wiki).
+
+## Setup
+
+```bash
+git clone https://github.com/uhop/yopl.git
+cd yopl
+npm install
+```
+
+## Commands
+
+- **Install:** `npm install`
+- **Test:** `npm test`
+- **Debug:** `npm run debug` — run tests with Node inspector
+- **Type check:** `npm run ts-check` — TypeScript type checking
+- **Lint:** `npm run lint` — Prettier check
+- **Lint fix:** `npm run lint:fix` — Prettier write
+
+## Project structure
+
+```
+yopl/
+├── package.json          # Package config
+├── src/                  # ES6 source code
+│   ├── solve.js          # Solver core / main entry
+│   ├── solvers/          # Alternative driver styles
+│   │   ├── gen.js        # Synchronous generator-based solver
+│   │   ├── async.js      # Async callback-based solver
+│   │   └── asyncGen.js   # Async generator-based solver
+│   ├── compile/          # Rule compiler (IR + lowering + per-clause DSL)
+│   │   ├── ir.js         # 5 Term + 4 Goal IR kinds, Clause, Rule, IR_KINDS
+│   │   ├── lower.js      # IR → runtime rule fns (incl. the Lit-walker)
+│   │   ├── validate.js   # Static-bug-class checks (arity, call-arity, vars, dupes)
+│   │   └── clause/       # Per-clause tagged-template DSL: rule(name, arity)(clause`...`)
+│   └── rules/            # Built-in rule library
+│       ├── logic.js      # Logical connectives
+│       ├── comp.js       # Comparison rules
+│       ├── math.js       # Arithmetic rules
+│       ├── bits.js       # Bitwise rules
+│       ├── system.js     # Generic logic predicates
+│       └── native.js     # JS bridges (Array / Map / Set / Date predicates)
+├── bench/                # Performance benchmarks (nano-benchmark)
+├── tests/                # Test files (grouped test-*.js, dispatched by tests.js)
+├── dev-docs/             # Internal design notes (compiler-ir.md, native-objects.md, …)
+└── .github/              # CI workflows, funding, dependabot
+```
+
+## Code style
+
+- **ES6 modules** (`"type": "module"` in package.json).
+- **Single runtime dependency.** Only `deep6` is allowed in `dependencies`.
+- **Prettier** for formatting (see `.prettierrc`): 2-space indent, single quotes, semicolons required, no trailing commas.
 
 ## Critical rules
 
-- **ES6 modules.** The project is `"type": "module"`. Use `import`/`export` syntax.
-- **Single runtime dependency.** Only `deep6` is allowed in `dependencies`. Do not add others.
+- **ES6 modules.** Use `import`/`export` syntax in source.
+- **Single runtime dependency.** Do not add packages to `dependencies` other than `deep6`.
 - **Do not modify or delete test expectations** without understanding why they changed.
 - **Do not add or remove comments** unless explicitly asked.
 - **Keep `src/` in sync.** Run `npm test` and `npm run lint:fix` after changes.
 
-## Code style
+## Architecture
 
-- 2-space indentation.
-- Single quotes for strings.
-- Semicolons are required (enforced by Prettier).
-- See `.prettierrc` for formatting settings.
+- **Solver core** (`src/solve.js`) — the synchronous callback-style solver and the main public
+  entry. Drives unification (via `deep6`) over a rule database using an explicit goal stack.
+- **Solver drivers** (`src/solvers/`) — alternative execution strategies sharing the same proof
+  loop:
+  - `gen.js` — synchronous generator yielding one `Env` per solution.
+  - `async.js` — async callback-based driver for `await`-bearing predicates.
+  - `asyncGen.js` — async generator combining the two.
+- **Rule compiler** (`src/compile/`) — pure-data IR plus a lowering pass. Rules are written as
+  `rule(name, arity)(clause...)` using the per-clause tagged-template DSL. The IR has 5 Term
+  kinds + 4 Goal kinds. Lowering substitutes activation-fresh logic Variables; the
+  **`Lit`-walker** descends into plain objects and arrays inside a literal's value, so a
+  template like `Lit({age: Var('A')})` doubles as a pattern matcher and a constructor.
+  Re-exports `open` / `soft` / `_` from `deep6` for fine-grained match control. Front-ends
+  emit IR; the runtime never sees IR. Design: `dev-docs/compiler-ir.md`.
+- **Rule library** (`src/rules/`) — built-in predicates split by domain:
+  - `system.js` — generic logic-programming: helpers (`head`, `term`, `list`, `listHead`,
+    `rest`), control (`call`, `cut`, `fail`, `halt`, `isBound`, `not`, `true`, `once`, `eq`,
+    `notEq`, `unifyOpts`, `isUnifiable`, `conjunction`, `disjunction`, `counterExample`,
+    `implies`), type tests (`isVar`, `isNonVar`, `isNumber`, `isString`, `isNull`,
+    `isUndefined`), higher-order (`map`, `filter`, `foldl`, `foldr`, `compose`, `converse`).
+  - `native.js` — JS-native bridges (Array / Map / Set / Date). Type tests: `isArray`,
+    `isMap`, `isSet`, `isDate`. Array: `arrayList`, `arrayGet`, `arraySet`, `arrayLength`.
+    Map: `mapEntries`, `mapGet`, `mapHas`. Set: `setItems`, `setHas`. Date: `dateTimestamp`,
+    `dateComponents`, `dateComponentsUTC`. Design: `dev-docs/native-objects.md`.
+  - `comp.js` — comparisons (`lt`/`le`/`gt`/`ge`, `nz`).
+  - `math.js` — arithmetic (`add`/`sub`/`mul`/`div`/`neg`); each reversible.
+  - `bits.js` — bitwise (`bitAnd`/`bitOr`/`bitXor`/`bitNot`).
+  - `logic.js` — boolean logic (`logicalAnd`/`logicalOr`/`logicalXor`/`logicalNot`).
 
-## Architecture quick reference
+Per-module documentation lives in the [wiki](https://github.com/uhop/yopl/wiki).
 
-- **Main entry:** `src/solve.js` — solver core.
-- **Solvers:** `src/solvers/` — alternative solver drivers.
-  - `gen.js` — synchronous generator-based solver.
-  - `async.js` — async callback-based solver.
-  - `asyncGen.js` — async generator-based solver.
-- **Rules:** `src/rules/` — built-in rule modules.
-  - `logic.js` — logical connectives.
-  - `comp.js` — comparison rules.
-  - `math.js` — arithmetic rules.
-  - `bits.js` — bitwise rules.
-  - `system.js` — system/utility rules.
+## Writing tests
 
-## Verification commands
-
-- `npm test` — run the test suite.
-- `npm run debug` — run tests with Node inspector.
-- `npm run ts-check` — TypeScript type checking.
-- `npm run lint` — Prettier check.
-- `npm run lint:fix` — Prettier write.
-
-## File layout
-
-- Entry point: `src/solve.js`
-- Solvers: `src/solvers/` (gen.js, async.js, asyncGen.js)
-- Rules: `src/rules/` (logic.js, comp.js, math.js, bits.js, system.js)
-- Tests: `tests/tests.js` (dispatcher), grouped in `tests/test-*.js`
+- Tests live in `tests/test-*.js`, dispatched via `tests/tests.js`.
+- The test harness (`tests/harness.js`) is the same lightweight one used by `deep6`. Each test
+  module exports a default array of named test functions; the dispatcher concatenates them and
+  runs them with `runAllTests`.
+- Use the `submit` / `TEST` helpers from `harness.js` to record assertions:
+  `eval(TEST('unify(result, [1, 2, 3])'));`.
+- Shared list/timeout helpers live in `tests/helpers.js`.
+- Run with `npm test`. The CommonJS interop smoke test lives at `tests/test-cjs.cjs` and is run
+  manually with `node tests/test-cjs.cjs`.
+- TypeScript typings are exercised separately by `tests/test-types.ts` via `npm run ts-check`.
 
 ## When reading the codebase
 
-- Start with `ARCHITECTURE.md` for the module map and dependency graph.
-- `src/solve.js` is the core solver — read it first.
-- `src/solvers/` contains alternative driver styles built on the same core.
-- `src/rules/` defines the built-in rule library.
-- Read `README.md` for usage examples.
+- Start with this file ([AGENTS.md](./AGENTS.md)) for rules and constraints.
+- Consult [ARCHITECTURE.md](./ARCHITECTURE.md) for module relationships.
+- `src/solve.js` is the core — read it first.
+- Run `npm test` and `npm run lint:fix` after any changes.

@@ -15,13 +15,21 @@ src/                      # ES6 source code
 │   ├── gen.js            # Synchronous generator-based solver
 │   ├── async.js          # Async callback-based solver
 │   └── asyncGen.js       # Async generator-based solver
+├── compile/              # Rule compiler (IR + lowering + per-clause DSL)
+│   ├── ir.js             # 5 Term + 4 Goal IR kinds, Clause, Rule, IR_KINDS
+│   ├── lower.js          # IR → runtime rule fns (incl. the Lit-walker)
+│   ├── validate.js       # Static-bug-class checks
+│   └── clause/           # Tagged-template DSL: rule(name, arity)(clause`...`)
 └── rules/                # Built-in rule library
     ├── logic.js          # Logical connectives
     ├── comp.js           # Comparison rules
     ├── math.js           # Arithmetic rules
     ├── bits.js           # Bitwise rules
-    └── system.js         # System / utility rules
+    ├── system.js         # Generic logic predicates
+    └── native.js         # JS-native bridges (Array/Map/Set/Date)
+bench/                    # Performance benchmarks (nano-benchmark)
 tests/                    # Tests grouped in test-*.js, dispatched by tests.js
+dev-docs/                 # Internal design notes (compiler-ir.md, native-objects.md, …)
 .github/                  # CI workflows, funding, dependabot
 ```
 
@@ -61,15 +69,47 @@ The `src/solvers/` modules wrap the core in alternative execution styles:
 - **`async.js`** — async callback-based driver for I/O-bound rules.
 - **`asyncGen.js`** — async generator that combines both.
 
+### Rule compiler
+
+`src/compile/` provides a pure-data IR plus a lowering pass that turns it into runtime rule
+functions. Front-ends (currently the per-clause tagged-template DSL in `compile/clause/`) emit
+IR; lowering is the only place that knows the runtime rule shape. The IR has 5 Term kinds
+(`var`, `wildcard`, `literal`, `cons`, `compound`) and 4 Goal kinds (`call`, `cut`, `fail`,
+`js`), plus `Clause` and `Rule`.
+
+The **`Lit`-walker** (in `lower.js`) descends into plain objects and arrays inside a literal's
+value, recursively lowering any nested IR node with the activation's fresh logic Variables. So
+`Lit({age: Var('A')})` doubles as both a pattern matcher and a constructor — `A` binds when
+the head matches an incoming object, and the same template renders an object when `A` is
+bound. Maps, Sets, Dates, and `Wrap`-wrapped values (`open`/`soft`) pass through unchanged.
+
+`compile/ir.js` re-exports `open`, `soft`, and `_` from `deep6` for fine-grained match control
+on `Lit`-wrapped values. See `dev-docs/compiler-ir.md` for the full design.
+
 ### Built-in rules
 
-`src/rules/` provides a small standard library of predicates:
+`src/rules/` provides a small standard library of predicates, split by domain:
 
-- **`logic.js`** — logical connectives (and/or/not, if-then-else, etc.).
+- **`system.js`** — generic logic-programming primitives. Term builders (`head`, `term`,
+  `list`, `listHead`, `rest`); control (`call`, `cut`, `fail`, `halt`, `isBound`, `not`,
+  `true`, `once`, `eq` (≡ `unify`), `notEq` (≡ `notUnifiable`), `unifyOpts`, `isUnifiable`,
+  `conjunction`, `disjunction`, `counterExample`, `implies`); generic type tests (`isVar`,
+  `isNonVar`, `isNumber`, `isString`, `isNull`, `isUndefined`); higher-order (`map`,
+  `filter`, `foldl`, `foldr`, `compose`, `converse`). `unifyOpts(X, Y, Opts)` invokes deep6
+  unification with a per-call options bag (`{openObjects, openArrays, openMaps, openSets,
+circular, loose, ignoreFunctions, signedZero, symbols}`); env baseline restored before the
+  goal returns.
+- **`native.js`** — JS-native bridges. Type tests: `isArray`, `isMap`, `isSet`, `isDate`.
+  Array: `arrayList` (bidir array ↔ cons list),
+  `arrayGet` (forward indexed lookup), `arraySet` (immutable single-index override),
+  `arrayLength`. Map: `mapEntries` (bidir M ↔ list of `[K, V]` pairs), `mapGet`, `mapHas`.
+  Set: `setItems` (bidir S ↔ list), `setHas`. Date: `dateTimestamp` (bidir D ↔ epoch ms),
+  `dateComponents` / `dateComponentsUTC` (bidir D ↔ component bag, local + UTC variants).
+  See `dev-docs/native-objects.md`.
 - **`comp.js`** — comparison and ordering predicates.
-- **`math.js`** — arithmetic predicates.
+- **`math.js`** — arithmetic predicates (each reversible).
 - **`bits.js`** — bitwise predicates.
-- **`system.js`** — system/utility predicates.
+- **`logic.js`** — boolean logic (`logicalAnd`, `logicalOr`, `logicalXor`, `logicalNot`).
 
 ## Module dependency graph
 
@@ -79,16 +119,28 @@ src/solvers/gen.js         ── deep6/unify.js
 src/solvers/async.js       ── deep6/unify.js
 src/solvers/asyncGen.js    ── deep6/unify.js
 
-src/rules/system.js        ── deep6/env.js (_, isVariable)
-src/rules/comp.js          ── deep6/env.js (_), src/rules/system.js
-src/rules/math.js          ── deep6/env.js (_), src/rules/system.js
-src/rules/bits.js          ── deep6/env.js (_), src/rules/system.js
-src/rules/logic.js         ── deep6/env.js (_), src/rules/system.js
+src/compile/ir.js          ── deep6/unify.js (open, soft), deep6/env.js (_)
+src/compile/lower.js       ── src/compile/ir.js, src/rules/system.js (call/cut/fail helpers)
+src/compile/validate.js    ── src/compile/ir.js
+src/compile/clause/        ── src/compile/ir.js
+
+src/rules/system.js        ── deep6/env.js (_, isVariable), deep6/unify.js (unify),
+                              src/compile/lower.js, src/compile/clause/
+src/rules/native.js        ── deep6/env.js (isVariable), deep6/unify.js (unify),
+                              src/compile/lower.js, src/compile/clause/
+src/rules/comp.js          ── deep6/env.js (_), src/compile/lower.js, src/compile/clause/
+src/rules/math.js          ── deep6/env.js (_), src/rules/system.js (cut),
+                              src/compile/lower.js, src/compile/clause/
+src/rules/bits.js          ── deep6/env.js (_), src/rules/system.js (cut),
+                              src/compile/lower.js, src/compile/clause/
+src/rules/logic.js         ── src/compile/lower.js, src/compile/clause/
 ```
 
-The solver drivers are independent — none of them imports the others, and none of them depends
-on the rule library. The rule modules depend only on `deep6` and on `system.js` for shared
-helpers.
+The solver drivers are independent — none of them imports the others or the rule library.
+`src/rules/system.js` and `src/compile/lower.js` form a minor cycle resolved by ESM live
+bindings: `lower.js` imports `call`/`cut`/`fail` from `system.js` for use inside lowered
+closures (which run only at proof time), while `system.js` itself uses `lower.js` to compile
+its own rule definitions.
 
 ## Import paths
 
@@ -101,12 +153,19 @@ import solveGen from 'yopl/solvers/gen.js';
 import solveAsync from 'yopl/solvers/async.js';
 import solveAsyncGen from 'yopl/solvers/asyncGen.js';
 
-// Rules
-import logic from 'yopl/rules/logic.js';
-import comp from 'yopl/rules/comp.js';
-import math from 'yopl/rules/math.js';
-import bits from 'yopl/rules/bits.js';
-import system from 'yopl/rules/system.js';
+// Compiler — IR + lowering + per-clause front-end
+import {Var, Wild, Lit, Cons, Compound, Call, Cut, Fail, Js, Clause, Rule, open, soft, _} from 'yopl/compile/ir.js';
+import {lowerRules, lowerRule} from 'yopl/compile/lower.js';
+import {rule, clause} from 'yopl/compile/clause/index.js';
+import {validate, validateOrThrow} from 'yopl/compile/validate.js';
+
+// Rules — spread to compose
+import {rules as systemRules} from 'yopl/rules/system.js';
+import {rules as nativeRules} from 'yopl/rules/native.js';
+import {rules as compRules} from 'yopl/rules/comp.js';
+import {rules as mathRules} from 'yopl/rules/math.js';
+import {rules as bitsRules} from 'yopl/rules/bits.js';
+import {rules as logicRules} from 'yopl/rules/logic.js';
 ```
 
 ## Testing
