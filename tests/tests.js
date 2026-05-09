@@ -6,5 +6,14 @@ import asyncTests from './test-async.js';
 import asyncGenTests from './test-asyncGen.js';
 import systemTests from './test-system.js';
 import rulesTests from './test-rules.js';
+import compileTests from './test-compile.js';
 
-runAllTests([...solveTests, ...genTests, ...asyncTests, ...asyncGenTests, ...systemTests, ...rulesTests]);
+runAllTests([
+  ...solveTests,
+  ...genTests,
+  ...asyncTests,
+  ...asyncGenTests,
+  ...systemTests,
+  ...rulesTests,
+  ...compileTests
+]);
