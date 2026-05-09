@@ -65,7 +65,7 @@ const prove = async (rules, goals, env) => {
 
 const solve = async (rules, name, args, callback) => {
   const env = new Env();
-  env.openObjects = true;
+  env.options.openObjects = true;
   const goals = {terms: [{name, args}, async env => (await callback(env), false)], index: 0, next: null};
   await prove(rules, goals, env);
 };

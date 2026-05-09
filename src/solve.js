@@ -65,7 +65,7 @@ const prove = (rules, goals, env) => {
 
 const solve = (rules, name, args, callback) => {
   const env = new Env();
-  env.openObjects = true;
+  env.options.openObjects = true;
   const goals = {terms: [{name, args}, env => (callback(env), false)], index: 0, next: null};
   prove(rules, goals, env);
 };

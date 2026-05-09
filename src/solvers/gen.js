@@ -68,7 +68,7 @@ function* prove(rules, goals, env) {
 
 function* generate(rules, name, args) {
   const env = new Env();
-  env.openObjects = true;
+  env.options.openObjects = true;
   const goals = {terms: [{name, args}], index: 0, next: null};
   yield* prove(rules, goals, env);
 }
