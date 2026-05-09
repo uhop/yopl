@@ -1,5 +1,7 @@
 // @ts-self-types="./system.d.ts"
 import {_, isVariable} from 'deep6/env.js';
+import {lowerRules} from '../compile/lower.js';
+import {rule, clause} from '../compile/clause/index.js';
 
 // utilities
 
@@ -84,52 +86,99 @@ export const listHead = (...args) => {
   return list;
 };
 
-// rules
+// rules — built via the compiler. The lowered functions reference the
+// runtime helpers above (call, cut, fail) via lower.js's imports; the
+// circular import resolves cleanly because those helpers are accessed
+// only at proof time, by which point all bindings are populated.
 
-export const rules = {
+const compiled = lowerRules([
   // types
-  isVar: X => [head(X), env => !X.isBound(env)],
-  isNonVar: X => [head(X), env => X.isBound(env)],
-  isNumber: X => [head(X), env => X.isBound(env) && typeof X.get(env) == 'number'],
-  isString: X => [head(X), env => X.isBound(env) && typeof X.get(env) == 'string'],
-  isNull: X => [head(X), env => X.isBound(env) && X.get(env) === null],
-  isUndefined: X => [head(X), env => X.isBound(env) && X.get(env) === undefined],
-  isArray: X => [head(X), env => X.isBound(env) && Array.isArray(X.get(env))],
+  rule(
+    'isVar',
+    1
+  )(
+    clause`(X) :- ${({X}) =>
+      env =>
+        !X.isBound(env)}`
+  ),
+  rule(
+    'isNonVar',
+    1
+  )(
+    clause`(X) :- ${({X}) =>
+      env =>
+        X.isBound(env)}`
+  ),
+  rule(
+    'isNumber',
+    1
+  )(
+    clause`(X) :- ${({X}) =>
+      env =>
+        X.isBound(env) && typeof X.get(env) == 'number'}`
+  ),
+  rule(
+    'isString',
+    1
+  )(
+    clause`(X) :- ${({X}) =>
+      env =>
+        X.isBound(env) && typeof X.get(env) == 'string'}`
+  ),
+  rule(
+    'isNull',
+    1
+  )(
+    clause`(X) :- ${({X}) =>
+      env =>
+        X.isBound(env) && X.get(env) === null}`
+  ),
+  rule(
+    'isUndefined',
+    1
+  )(
+    clause`(X) :- ${({X}) =>
+      env =>
+        X.isBound(env) && X.get(env) === undefined}`
+  ),
+  rule(
+    'isArray',
+    1
+  )(
+    clause`(X) :- ${({X}) =>
+      env =>
+        X.isBound(env) && Array.isArray(X.get(env))}`
+  ),
 
   // equality
-  eq: X => [head(X, X)],
-  notEq: [(X, ...sys) => [head(X, X), cut(sys), fail], () => [head(_, _)]],
-  // unify is eq
+  rule('eq', 2)(clause`(X, X)`),
+  rule('notEq', 2)(clause`(X, X) :- !, fail`, clause`(_, _)`),
 
   // control predicates
-  call: X => [head(X), call(X)],
-  not: [(X, ...sys) => [head(X), call(X), cut(sys), fail], () => [head(_)]],
-  isUnifiable: (X, Y) => [head(X, Y), term('not', term('not', term('eq', X, Y)))],
-  // notUnifiable is notEq
-  conjunction: [() => [head(null)], (X, Xt) => [head(listHead(X, Xt)), call(X), term('conjunction', Xt)]],
-  disjunction: [X => [head(listHead(X, _)), call(X)], Xt => [head(listHead(_, Xt)), term('disjunction', Xt)]],
-  true: () => [head()],
-  once: (X, ...sys) => [head(X), call(X), cut(sys)],
-
-  // meta predicates
-  // apply, applyp
+  rule('call', 1)(clause`(X) :- X`),
+  rule('not', 1)(clause`(X) :- X, !, fail`, clause`(_)`),
+  rule('isUnifiable', 2)(clause`(X, Y) :- not(not(eq(X, Y)))`),
+  rule('conjunction', 1)(clause`(null)`, clause`([X | Xt]) :- X, conjunction(Xt)`),
+  rule('disjunction', 1)(clause`([X | _]) :- X`, clause`([_ | Xt]) :- disjunction(Xt)`),
+  rule('true', 0)(clause`()`),
+  rule('once', 1)(clause`(X) :- X, !`),
 
   // extended logic
-  counterExample: (A, B) => [head(A, B), call(A), term('not', B)],
-  implies: (A, B) => [head(A, B), term('not', term('counterExample', A, B))],
+  rule('counterExample', 2)(clause`(A, B) :- A, not(B)`),
+  rule('implies', 2)(clause`(A, B) :- not(counterExample(A, B))`),
 
   // second-order logic
-  // map, filter, foldl, foldr, compose, converse
-  map: [() => [head(_, null, null)], (F, X, Xt, Y, Yt) => [head(F, listHead(X, Xt), listHead(Y, Yt)), call(term(F, X, Y)), term('map', F, Xt, Yt)]],
-  filter: [
-    () => [head(_, null, null)],
-    (P, X, Xt, Yt) => [head(P, listHead(X, Xt), listHead(X, Yt)), call(term(P, X)), term('filter', P, Xt, Yt)],
-    (P, X, Xt, Yt) => [head(P, listHead(X, Xt), Yt), term('not', term(P, X)), term('filter', P, Xt, Yt)]
-  ],
-  foldl: [A => [head(_, A, null, A)], (F, A, X, Xt, O, B) => [head(F, A, listHead(X, Xt), O), call(term(F, A, X, B)), term('foldl', F, B, Xt, O)]],
-  foldr: [A => [head(_, A, null, A)], (F, A, X, Xt, O, T) => [head(F, A, listHead(X, Xt), O), term('foldr', F, A, Xt, T), call(term(F, X, T, O))]],
-  compose: (F, G, X, O, T) => [head(F, G, X, O), call(term(G, X, T)), call(term(F, T, O))],
-  converse: (F, X, Y, O) => [head(F, X, Y, O), call(term(F, Y, X, O))]
-};
-rules.unify = rules.eq;
-rules.notUnifiable = rules.notEq;
+  rule('map', 3)(clause`(_, null, null)`, clause`(F, [X | Xt], [Y | Yt]) :- F(X, Y), map(F, Xt, Yt)`),
+  rule('filter', 3)(
+    clause`(_, null, null)`,
+    clause`(P, [X | Xt], [X | Yt]) :- P(X), filter(P, Xt, Yt)`,
+    clause`(P, [X | Xt], Yt) :- not(P(X)), filter(P, Xt, Yt)`
+  ),
+  rule('foldl', 4)(clause`(_, A, null, A)`, clause`(F, A, [X | Xt], O) :- F(A, X, B), foldl(F, B, Xt, O)`),
+  rule('foldr', 4)(clause`(_, A, null, A)`, clause`(F, A, [X | Xt], O) :- foldr(F, A, Xt, T), F(X, T, O)`),
+  rule('compose', 4)(clause`(F, G, X, O) :- G(X, T), F(T, O)`),
+  rule('converse', 4)(clause`(F, X, Y, O) :- F(Y, X, O)`)
+]);
+compiled.unify = compiled.eq;
+compiled.notUnifiable = compiled.notEq;
+export const rules = compiled;

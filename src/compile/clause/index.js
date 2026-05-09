@@ -28,8 +28,35 @@
 // supported; split into multiple clauses instead. Negation `\+ G`
 // desugar is deferred — write `not(G)` against the system.js `not`
 // rule (or your own).
+//
+// Interpolation values:
+//
+//   In arg position (head args, list elements, compound args):
+//     - primitives + null + undefined → wrapped as `Lit(value)`
+//     - object with string `.kind`    → used as-is (Term IR)
+//     - anything else                 → throws (must wrap explicitly)
+//
+//   In goal position (body):
+//     - function                      → wrapped as `Js(fn)` — factory shape
+//     - object with string `.kind`    → used as-is (Goal IR)
+//     - anything else                 → throws
 
-import {Var, Wild, Lit, Compound, List, Call, Cut, Fail, Clause as IRClause, Rule as IRRule} from '../ir.js';
+import {Var, Wild, Lit, Compound, List, Call, Cut, Fail, Js, Clause as IRClause, Rule as IRRule} from '../ir.js';
+
+const isIRNode = v => v !== null && typeof v === 'object' && typeof v.kind === 'string';
+
+const wrapTermInterp = v => {
+  if (isIRNode(v)) return v;
+  const t = typeof v;
+  if (v === null || t === 'string' || t === 'number' || t === 'boolean' || t === 'bigint' || t === 'undefined' || t === 'symbol') return Lit(v);
+  throw new Error(`interpolation in arg position must be a Term IR or primitive, got ${t === 'object' ? 'object without .kind' : t}`);
+};
+
+const wrapGoalInterp = v => {
+  if (typeof v === 'function') return Js(v);
+  if (isIRNode(v)) return v;
+  throw new Error(`interpolation in goal position must be a Goal IR or function, got ${v === null ? 'null' : typeof v}`);
+};
 
 // ---------------------------------------------------------------------------
 // Lexer
@@ -150,7 +177,7 @@ const parseClauseTokens = (tokens, values) => {
     const t = peek();
     if (t.kind === 'interp') {
       ++pos;
-      return values[t.index];
+      return wrapTermInterp(values[t.index]);
     }
     if (t.kind === 'number') {
       ++pos;
@@ -167,7 +194,7 @@ const parseClauseTokens = (tokens, values) => {
       if (accept('lparen')) {
         const args = parseArgs();
         eat('rparen');
-        return Compound(name, args);
+        return Compound(isVarStart(name) ? Var(name) : name, args);
       }
       if (name === '_') return Wild();
       if (name === 'null') return Lit(null);
@@ -208,7 +235,7 @@ const parseClauseTokens = (tokens, values) => {
     const t = peek();
     if (t.kind === 'interp') {
       ++pos;
-      return values[t.index];
+      return wrapGoalInterp(values[t.index]);
     }
     if (t.kind === 'bang') {
       ++pos;

@@ -224,6 +224,58 @@ export default [
     const issues = validate([broken]);
     eval(TEST("issues.length === 1 && issues[0].kind === 'arity-mismatch'"));
   },
+  function test_clause_interp_primitive_autowrap() {
+    // Bare primitives in arg position auto-wrap to Lit().
+    const seven = 7;
+    const rules = lowerRules([rule('isSeven', 1)(clause`(${seven})`)]);
+    let result = [];
+    solve(rules, 'isSeven', [7], () => result.push(true));
+    eval(TEST('result.length === 1'));
+    result = [];
+    solve(rules, 'isSeven', [8], () => result.push(true));
+    eval(TEST('result.length === 0'));
+  },
+  function test_clause_interp_function_autowrap_js() {
+    // Bare functions in goal position auto-wrap to Js(fn).
+    const isPositive =
+      ({X}) =>
+      env =>
+        X.isBound(env) && X.get(env) > 0;
+    const rules = lowerRules([rule('pos', 1)(clause`(X) :- ${isPositive}`)]);
+    let result = [];
+    solve(rules, 'pos', [5], () => result.push(true));
+    eval(TEST('result.length === 1'));
+    result = [];
+    solve(rules, 'pos', [-1], () => result.push(true));
+    eval(TEST('result.length === 0'));
+  },
+  function test_clause_interp_rejects_plain_object_in_arg() {
+    let threw = false;
+    try {
+      clause`(${{name: 'foo', args: []}})`;
+    } catch (e) {
+      threw = e.message.includes('arg position');
+    }
+    eval(TEST('threw'));
+  },
+  function test_clause_interp_rejects_function_in_arg() {
+    let threw = false;
+    try {
+      clause`(${() => 42})`;
+    } catch (e) {
+      threw = e.message.includes('arg position');
+    }
+    eval(TEST('threw'));
+  },
+  function test_clause_interp_rejects_primitive_in_goal() {
+    let threw = false;
+    try {
+      clause`(X) :- ${42}`;
+    } catch (e) {
+      threw = e.message.includes('goal position');
+    }
+    eval(TEST('threw'));
+  },
   function test_validate_or_throw() {
     const bad = [Rule('foo', 2, [Clause([Var('X')])])];
     let threw = false;
