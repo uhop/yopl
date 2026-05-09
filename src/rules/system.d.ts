@@ -81,11 +81,14 @@ export declare const listHead: (...args: unknown[]) => unknown;
  * - **Extended logic** — `counterExample`, `implies`.
  * - **Second-order** — `map`, `filter`, `foldl`, `foldr`, `compose`,
  *   `converse`.
- * - **JS bridges** — `arrayList` (bidirectional JS array ↔ cons list).
- *
  * `unifyOpts(X, Y, Opts)` runs deep6 unification with a per-call
  * options bag (`{openObjects, openArrays, openMaps, openSets,
  * circular, loose, ignoreFunctions, signedZero, symbols}`); the env's
  * baseline `options` is restored before the goal returns.
+ *
+ * Predicates that bridge to JS-native built-in types (Array, Map,
+ * Set, Date) live in `src/rules/native.js` — import separately and
+ * compose via `{...systemRules, ...nativeRules}`. See
+ * `dev-docs/native-objects.md` for that design.
  */
 export declare const rules: Rules;

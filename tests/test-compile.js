@@ -319,5 +319,58 @@ export default [
     const result = [];
     solve(rules, 'rec', [{age: 99}], () => result.push(true));
     eval(TEST('unify(result, [true])'));
+  },
+  function test_lit_walker_var_in_object() {
+    // Lit-walker substitutes nested Var IR with fresh activation Variables.
+    // `Var('A')` inside a Lit-wrapped object binds the `age` field per call.
+    const rules = lowerRules([rule('age', 2)(clause`(${Lit({age: Var('A')})}, A)`)]);
+    const A = v('A'),
+      result = [];
+    solve(rules, 'age', [{age: 30}, A], env => result.push(assemble(A, env)));
+    eval(TEST('unify(result, [30])'));
+  },
+  function test_lit_walker_var_in_array() {
+    // Walker descends into arrays too — Vars inside array slots substitute.
+    const rules = lowerRules([rule('snd', 2)(clause`(${Lit([1, Var('X')])}, X)`)]);
+    const X = v('X'),
+      result = [];
+    solve(rules, 'snd', [[1, 99], X], env => result.push(assemble(X, env)));
+    eval(TEST('unify(result, [99])'));
+  },
+  function test_lit_walker_nested_structure() {
+    // Walker descends through object-inside-array, array-inside-object, etc.
+    const rules = lowerRules([rule('deep', 2)(clause`(${Lit({rows: [{n: Var('N')}]})}, N)`)]);
+    const N = v('N'),
+      result = [];
+    solve(rules, 'deep', [{rows: [{n: 7}]}, N], env => result.push(assemble(N, env)));
+    eval(TEST('unify(result, [7])'));
+  },
+  function test_lit_walker_anonymous_var_via_Var_no_arg() {
+    // `Var()` mints a Symbol-named anonymous variable; two calls produce
+    // distinct vars; the walker substitutes them per activation.
+    const X = Var(),
+      Y = Var();
+    const rules = lowerRules([rule('pair', 2)(clause`(${Lit({a: X, b: Y})}, ${Lit([X, Y])})`)]);
+    const Out = v('Out'),
+      result = [];
+    solve(rules, 'pair', [{a: 1, b: 2}, Out], env => result.push(assemble(Out, env)));
+    eval(TEST('unify(result, [[1, 2]])'));
+  },
+  function test_lit_walker_does_not_misread_user_kind_field() {
+    // A user object with a `kind` field that's NOT one of the IR kinds is
+    // domain data; the walker leaves it alone.
+    const rules = lowerRules([rule('evt', 1)(clause`(${Lit({kind: 'click', x: 10})})`)]);
+    const result = [];
+    solve(rules, 'evt', [{kind: 'click', x: 10}], () => result.push(true));
+    eval(TEST('unify(result, [true])'));
+  },
+  function test_lit_walker_does_not_walk_class_instances() {
+    // Wrap-wrapped values from open()/soft() have a custom prototype;
+    // walker leaves them as-is so deep6's per-value match-mode wrappers
+    // continue to work end-to-end.
+    const rules = lowerRules([rule('o', 1)(clause`(${Lit(open({a: 1}))})`)]);
+    const result = [];
+    solve(rules, 'o', [{a: 1, b: 2}], () => result.push(true));
+    eval(TEST('unify(result, [true])'));
   }
 ];

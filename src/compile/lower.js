@@ -13,7 +13,34 @@
 
 import {_} from 'deep6/env.js';
 import {call as runtimeCall, cut as runtimeCut, fail as runtimeFail} from '../rules/system.js';
-import {collectVars} from './ir.js';
+import {collectVars, IR_KINDS} from './ir.js';
+
+// Walk a `Lit` value per activation, substituting any nested IR node
+// with its lowered runtime equivalent. Plain objects and arrays are
+// recursively rebuilt with substitutions applied; everything else
+// (Maps, Sets, Dates, class instances, Wrap-wrapped values from
+// open/soft, primitives) is returned as-is. IR detection is gated on
+// the closed set of IR_KINDS so user objects with a `kind` field
+// don't collide.
+const lowerLitValue = (val, vars, seen) => {
+  if (val === null || typeof val !== 'object') return val;
+  if (seen.has(val)) return seen.get(val);
+  if (typeof val.kind === 'string' && IR_KINDS.has(val.kind)) return lowerTerm(val, vars);
+  if (Array.isArray(val)) {
+    const out = [];
+    seen.set(val, out);
+    for (const e of val) out.push(lowerLitValue(e, vars, seen));
+    return out;
+  }
+  const proto = Object.getPrototypeOf(val);
+  if (proto === Object.prototype || proto === null) {
+    const out = {};
+    seen.set(val, out);
+    for (const k of Object.keys(val)) out[k] = lowerLitValue(val[k], vars, seen);
+    return out;
+  }
+  return val;
+};
 
 const lowerTerm = (term, vars) => {
   switch (term.kind) {
@@ -22,7 +49,7 @@ const lowerTerm = (term, vars) => {
     case 'wildcard':
       return _;
     case 'literal':
-      return term.value;
+      return lowerLitValue(term.value, vars, new Map());
     case 'cons':
       return {value: lowerTerm(term.head, vars), next: lowerTerm(term.tail, vars)};
     case 'compound': {

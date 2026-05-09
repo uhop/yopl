@@ -10,14 +10,37 @@
 //
 // See dev-docs/compiler-ir.md § validation for the rationale.
 
+import {IR_KINDS} from './ir.js';
+
 const issue = (kind, message, where) => ({kind, message, ...where});
 
 const referencedVars = clause => {
   const refs = new Set();
+  const visited = new WeakSet();
+  const walkLitValue = v => {
+    if (v === null || typeof v !== 'object') return;
+    if (visited.has(v)) return;
+    visited.add(v);
+    if (typeof v.kind === 'string' && IR_KINDS.has(v.kind)) {
+      walkTerm(v);
+      return;
+    }
+    if (Array.isArray(v)) {
+      for (const e of v) walkLitValue(e);
+      return;
+    }
+    const proto = Object.getPrototypeOf(v);
+    if (proto === Object.prototype || proto === null) {
+      for (const k of Object.keys(v)) walkLitValue(v[k]);
+    }
+  };
   const walkTerm = t => {
     switch (t.kind) {
       case 'var':
         refs.add(t.name);
+        return;
+      case 'literal':
+        walkLitValue(t.value);
         return;
       case 'cons':
         walkTerm(t.head);

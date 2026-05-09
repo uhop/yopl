@@ -287,12 +287,15 @@ Three constraints worth knowing:
    keys by `rule.name` (`src/compile/lower.js:75`), so two separate
    `rule('person', 1)(...)` invocations would overwrite.
 
-2. **Variables inside `Lit({...})` in clause heads are unsound.**
-   `lowerTerm` returns `term.value` verbatim across activations
-   (`src/compile/lower.js:25`); a logic Variable baked into the
-   object would alias every activation. For partial structure with
-   clause-scoped vars on the head side, fall back to a `Js` body
-   goal that decomposes the object manually.
+2. **Variables inside `Lit({...})` are walked per activation.**
+   The Lit-walker (`src/compile/lower.js`'s `lowerLitValue`)
+   recursively descends into plain objects and arrays inside the
+   literal's value; any nested IR node (`Var`, `Wild`, `Cons`,
+   `Compound`, `Lit`) is recursively lowered with the activation's
+   fresh Variables. So `Lit({age: Var('A')})` matches an object,
+   binds `A` to its `age` field, and `A` is fresh per activation.
+   Maps, Sets, Dates, class instances, and `Wrap`-wrapped values
+   (`open`/`soft`) are NOT walked — keep their innards static.
 
 3. **Per-value match-mode wrappers from deep6 propagate.**
    `Lit(open({...}))` locks subset matching regardless of env

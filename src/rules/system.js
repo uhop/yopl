@@ -142,34 +142,7 @@ const compiled = lowerRules([
   rule('foldl', 4)(clause`(_, A, null, A)`, clause`(F, A, [X | Xt], O) :- F(A, X, B),       foldl(F, B, Xt, O)`),
   rule('foldr', 4)(clause`(_, A, null, A)`, clause`(F, A, [X | Xt], O) :- foldr(F, A, Xt, T), F(X, T, O)`),
   rule('compose',  4)(clause`(F, G, X, O) :- G(X, T), F(T, O)`),
-  rule('converse', 4)(clause`(F, X, Y, O) :- F(Y, X, O)`),
-
-  // JS bridges — convert between JS arrays and yopl cons lists.
-  // Bidirectional: bind whichever side is unbound from the other.
-  rule('arrayList', 2)(clause`(A, L) :- ${({A, L}) => env => {
-    const aBound = A.isBound(env), lBound = L.isBound(env);
-    if (!aBound && !lBound) return false;
-    if (aBound) {
-      const arr = A.get(env);
-      if (!Array.isArray(arr)) return false;
-      let cell = null;
-      for (let i = arr.length - 1; i >= 0; --i) cell = {value: arr[i], next: cell};
-      return !!unify(L, cell, env);
-    }
-    let cur = L.get(env);
-    const arr = [];
-    while (cur !== null && cur !== undefined) {
-      if (isVariable(cur)) {
-        if (!cur.isBound(env)) return false; // open tail
-        cur = cur.get(env);
-        continue;
-      }
-      if (typeof cur !== 'object' || !('value' in cur)) return false;
-      arr.push(cur.value);
-      cur = cur.next;
-    }
-    return !!unify(A, arr, env);
-  }}`)
+  rule('converse', 4)(clause`(F, X, Y, O) :- F(Y, X, O)`)
 ]);
 compiled.unify = compiled.eq;
 compiled.notUnifiable = compiled.notEq;

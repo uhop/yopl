@@ -12,10 +12,15 @@ export {_, _ as any} from 'deep6/env.js';
 // ---------------------------------------------------------------------------
 // Terms
 
-/** A user-named logic variable. */
+/**
+ * A user-named logic variable. `name` is a `Symbol` when the var was
+ * minted via `Var()` without an argument — used for IR fragments
+ * built in JS that need a guaranteed-unique name without the user
+ * picking one. Mirrors `deep6`'s `variable()` (`name || Symbol()`).
+ */
 export interface VarTerm {
   kind: 'var';
-  name: string;
+  name: string | symbol;
 }
 
 /** Anonymous "match-anything" slot (Prolog `_`). */
@@ -49,8 +54,15 @@ export interface CompoundTerm {
 /** Anything that may appear in a clause head or inside an argument list. */
 export type Term = VarTerm | WildTerm | LitTerm | ConsTerm | CompoundTerm;
 
-/** Build a user-named logic-variable term. */
-export declare const Var: (name: string) => VarTerm;
+/**
+ * Build a logic-variable term. With a falsy / omitted `name` argument,
+ * mints a fresh `Symbol`-named anonymous variable — useful for IR
+ * fragments built in JS code that need a guaranteed-unique identity.
+ */
+export declare const Var: (name?: string) => VarTerm;
+
+/** Set of IR-node `kind` discriminators recognized by the Lit-walker. */
+export declare const IR_KINDS: Set<'var' | 'wildcard' | 'literal' | 'cons' | 'compound'>;
 
 /** Build an anonymous wildcard term. */
 export declare const Wild: () => WildTerm;

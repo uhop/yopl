@@ -33,7 +33,18 @@ export {_, _ as any} from 'deep6/env.js';
 // `compound.name` may be a string (static) or a Term IR (dynamic — see
 // the "dynamic name" notes in the design doc); `compound.args` is a Term[].
 
-export const Var = name => ({kind: 'var', name});
+// Closed set of IR kind discriminators. Used by the Lit-walker (lower.js
+// + collectVars below) to decide whether a nested `kind`-bearing object
+// is an IR node to substitute, or domain data that happens to have a
+// `kind` field. Keeping the set closed avoids namespace collision with
+// user data.
+export const IR_KINDS = new Set(['var', 'wildcard', 'literal', 'cons', 'compound']);
+
+// `Var()` without an argument mints a fresh anonymous Variable name as
+// a Symbol — useful for IR fragments built in JS that you want to splice
+// into clauses without inventing a non-colliding string name. Mirrors
+// deep6's `variable()` (`name || Symbol()`).
+export const Var = name => ({kind: 'var', name: name || Symbol()});
 export const Wild = () => ({kind: 'wildcard'});
 export const Lit = value => ({kind: 'literal', value});
 export const Cons = (head, tail) => ({kind: 'cons', head, tail});
@@ -109,6 +120,26 @@ export const Rule = (name, arity, clauses) => ({name, arity, clauses});
 export const collectVars = clause => {
   const seen = new Set();
   const order = [];
+  const visited = new WeakSet(); // cycle protection inside Lit values
+
+  const walkLitValue = v => {
+    if (v === null || typeof v !== 'object') return;
+    if (visited.has(v)) return;
+    visited.add(v);
+    if (typeof v.kind === 'string' && IR_KINDS.has(v.kind)) {
+      walkTerm(v);
+      return;
+    }
+    if (Array.isArray(v)) {
+      for (const e of v) walkLitValue(e);
+      return;
+    }
+    const proto = Object.getPrototypeOf(v);
+    if (proto === Object.prototype || proto === null) {
+      for (const k of Object.keys(v)) walkLitValue(v[k]);
+    }
+    // Other objects (Map, Set, Date, Wrap, class instances) — leave alone.
+  };
 
   const walkTerm = t => {
     switch (t.kind) {
@@ -117,6 +148,9 @@ export const collectVars = clause => {
           seen.add(t.name);
           order.push(t.name);
         }
+        return;
+      case 'literal':
+        walkLitValue(t.value);
         return;
       case 'cons':
         walkTerm(t.head);
