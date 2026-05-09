@@ -91,7 +91,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for the development workflow and [AGENT
 
 ## Release history
 
-- 1.3.0 — rule compiler with a declarative tagged-template DSL, JS-native predicate library (`Array` / `Map` / `Set` / `Date` operations + type tests), `unifyOpts/3` for per-call deep6 options, and a `Lit`-walker that lets object literals double as patterns with logic-variable holes.
+- 1.3.0 — rule compiler, JS-native predicate library (`Array` / `Map` / `Set` / `Date`), `unifyOpts/3`.
 - 1.2.0 — removed CJS build, restructured tests, added TypeScript typings, simplified list creation, bug fixes and performance improvements, expanded docs and wiki.
 - 1.1.4 — updated dependencies.
 - 1.1.3 — updated dependencies.
