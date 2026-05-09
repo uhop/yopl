@@ -13,6 +13,12 @@ import {lowerRules} from '../compile/lower.js';
 import {rule, clause} from '../compile/clause/index.js';
 
 export const rules = lowerRules([
+  // Type tests for JS-native built-in types.
+  rule('isArray', 1)(clause`(X) :- ${({X}) => env => X.isBound(env) && Array.isArray(X.get(env))}`),
+  rule('isMap',   1)(clause`(X) :- ${({X}) => env => X.isBound(env) && X.get(env) instanceof Map}`),
+  rule('isSet',   1)(clause`(X) :- ${({X}) => env => X.isBound(env) && X.get(env) instanceof Set}`),
+  rule('isDate',  1)(clause`(X) :- ${({X}) => env => X.isBound(env) && X.get(env) instanceof Date}`),
+
   // Array ↔ yopl cons list. Bidirectional: bind whichever side is unbound.
   rule('arrayList', 2)(clause`(A, L) :- ${({A, L}) => env => {
     const aBound = A.isBound(env), lBound = L.isBound(env);

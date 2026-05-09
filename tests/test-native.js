@@ -10,6 +10,43 @@ import {makeList} from './helpers.js';
 
 export default [
   // ---------------------------------------------------------------------------
+  // Type tests
+  function test_isArray() {
+    let r = [];
+    solve(nativeRules, 'isArray', [[1, 2]], () => r.push('arr'));
+    solve(nativeRules, 'isArray', ['hello'], () => r.push('str'));
+    solve(nativeRules, 'isArray', [{a: 1}], () => r.push('obj'));
+    eval(TEST('unify(r, ["arr"])'));
+  },
+  function test_isMap() {
+    let r = [];
+    solve(nativeRules, 'isMap', [new Map()], () => r.push('map'));
+    solve(nativeRules, 'isMap', [{}], () => r.push('plain'));
+    solve(nativeRules, 'isMap', [new Set()], () => r.push('set'));
+    eval(TEST('unify(r, ["map"])'));
+  },
+  function test_isSet() {
+    let r = [];
+    solve(nativeRules, 'isSet', [new Set()], () => r.push('set'));
+    solve(nativeRules, 'isSet', [[]], () => r.push('arr'));
+    eval(TEST('unify(r, ["set"])'));
+  },
+  function test_isDate() {
+    let r = [];
+    solve(nativeRules, 'isDate', [new Date()], () => r.push('date'));
+    solve(nativeRules, 'isDate', [Date.now()], () => r.push('num'));
+    eval(TEST('unify(r, ["date"])'));
+  },
+  function test_isType_unbound_fails() {
+    const X = v('X'),
+      r = [];
+    solve(nativeRules, 'isArray', [X], () => r.push(true));
+    solve(nativeRules, 'isMap', [X], () => r.push(true));
+    solve(nativeRules, 'isSet', [X], () => r.push(true));
+    solve(nativeRules, 'isDate', [X], () => r.push(true));
+    eval(TEST('unify(r, [])'));
+  },
+  // ---------------------------------------------------------------------------
   // Array
   function test_arrayList_array_to_list() {
     const L = v('L'),

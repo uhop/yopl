@@ -100,7 +100,6 @@ const compiled = lowerRules([
   rule('isString',    1)(clause`(X) :- ${({X}) => env =>  X.isBound(env) && typeof X.get(env) == 'string'}`),
   rule('isNull',      1)(clause`(X) :- ${({X}) => env =>  X.isBound(env) && X.get(env) === null}`),
   rule('isUndefined', 1)(clause`(X) :- ${({X}) => env =>  X.isBound(env) && X.get(env) === undefined}`),
-  rule('isArray',     1)(clause`(X) :- ${({X}) => env =>  X.isBound(env) && Array.isArray(X.get(env))}`),
 
   // equality
   rule('eq',    2)(clause`(X, X)`),

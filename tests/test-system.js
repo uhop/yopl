@@ -92,12 +92,11 @@ export default [
     solve(systemRules, 'isNumber', ['hi'], () => result.push('bad'));
     eval(TEST('unify(result, ["n", "s"])'));
   },
-  function test_rule_isNull_isUndefined_isArray() {
+  function test_rule_isNull_isUndefined() {
     const result = [];
     solve(systemRules, 'isNull', [null], () => result.push('null'));
     solve(systemRules, 'isUndefined', [undefined], () => result.push('undef'));
-    solve(systemRules, 'isArray', [[1, 2]], () => result.push('arr'));
-    eval(TEST('unify(result, ["null", "undef", "arr"])'));
+    eval(TEST('unify(result, ["null", "undef"])'));
   },
   function test_rule_call_with_term() {
     // call(term('eq', X, 7)) should bind X to 7.

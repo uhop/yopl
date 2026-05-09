@@ -16,6 +16,8 @@ import type {Rules} from '../solve.js';
  *
  * Well-known keys:
  *
+ * - **Type predicates** — `isArray`, `isMap`, `isSet`, `isDate`.
+ *   All require their argument to be bound; otherwise fail.
  * - **Array** — `arrayList` (bidirectional Array ↔ cons list),
  *   `arrayGet` (forward indexed lookup),
  *   `arraySet` (immutable single-index override),

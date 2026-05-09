@@ -73,7 +73,8 @@ export declare const listHead: (...args: unknown[]) => unknown;
  * `{...systemRules, ...}` to compose with project rules):
  *
  * - **Type predicates** — `isVar`, `isNonVar`, `isNumber`, `isString`,
- *   `isNull`, `isUndefined`, `isArray`.
+ *   `isNull`, `isUndefined`. (For JS-native type tests like `isArray`,
+ *   `isMap`, `isSet`, `isDate` see `src/rules/native.js`.)
  * - **Equality** — `eq`, `notEq`, `unifyOpts`. Aliases: `unify` (≡ `eq`),
  *   `notUnifiable` (≡ `notEq`).
  * - **Control** — `call`, `not`, `isUnifiable`, `conjunction`,
