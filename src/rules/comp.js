@@ -18,9 +18,9 @@ const compareFactory =
   };
 
 export const rules = lowerRules([
-  rule('lt', 2)(clause`(X, Y) :- ${compareFactory((a, b) => a < b)}`),
+  rule('lt', 2)(clause`(X, Y) :- ${compareFactory((a, b) => a <  b)}`),
   rule('le', 2)(clause`(X, Y) :- ${compareFactory((a, b) => a <= b)}`),
-  rule('gt', 2)(clause`(X, Y) :- ${compareFactory((a, b) => a > b)}`),
+  rule('gt', 2)(clause`(X, Y) :- ${compareFactory((a, b) => a >  b)}`),
   rule('ge', 2)(clause`(X, Y) :- ${compareFactory((a, b) => a >= b)}`),
 
   rule('nz', 1)(clause`(0) :- !, fail`, clause`(_) :- !`)

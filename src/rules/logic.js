@@ -97,7 +97,7 @@ const notReversible =
 
 export const rules = lowerRules([
   rule('logicalAnd', 3)(clause`(X, Y, Z) :- ${logicalForwardTernary((x, y) => x && y)}`),
-  rule('logicalOr', 3)(clause`(X, Y, Z) :- ${logicalForwardTernary((x, y) => x || y)}`),
+  rule('logicalOr',  3)(clause`(X, Y, Z) :- ${logicalForwardTernary((x, y) => x || y)}`),
   rule('logicalXor', 3)(clause`(X, Y, Z) :- ${xorReversible}`),
-  rule('logicalNot', 2)(clause`(X, Y) :- ${notReversible}`)
+  rule('logicalNot', 2)(clause`(X, Y)    :- ${notReversible}`)
 ]);

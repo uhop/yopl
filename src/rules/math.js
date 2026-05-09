@@ -82,44 +82,24 @@ const negReversible =
 
 export const rules = lowerRules([
   rule('add', 3)(
-    clause`(X, Y, Z) :- ${reversibleTernary(
-      (x, y, z) => x + y === z,
-      (x, y) => x + y,
-      (x, z) => z - x,
-      (y, z) => z - y
-    )}`,
+    clause`(X, Y, Z) :- ${reversibleTernary((x, y, z) => x + y === z, (x, y) => x + y, (x, z) => z - x, (y, z) => z - y)}`,
     clause`(0, Y, Y)`,
     clause`(X, 0, X)`
   ),
   rule('sub', 3)(
-    clause`(X, Y, Z) :- ${reversibleTernary(
-      (x, y, z) => x - y === z,
-      (x, y) => x - y,
-      (x, z) => x - z,
-      (y, z) => y + z
-    )}`,
+    clause`(X, Y, Z) :- ${reversibleTernary((x, y, z) => x - y === z, (x, y) => x - y, (x, z) => x - z, (y, z) => y + z)}`,
     clause`(X, 0, X)`,
     clause`(X, X, 0)`
   ),
   rule('mul', 3)(
-    clause`(X, Y, Z) :- ${reversibleTernary(
-      (x, y, z) => x * y === z,
-      (x, y) => x * y,
-      (x, z) => z / x,
-      (y, z) => z / y
-    )}`,
+    clause`(X, Y, Z) :- ${reversibleTernary((x, y, z) => x * y === z, (x, y) => x * y, (x, z) => z / x, (y, z) => z / y)}`,
     clause`(0, _, 0)`,
     clause`(_, 0, 0)`,
     clause`(1, X, X)`,
     clause`(X, 1, X)`
   ),
   rule('div', 3)(
-    clause`(X, Y, Z) :- ${reversibleTernary(
-      (x, y, z) => x / y === z,
-      (x, y) => x / y,
-      (x, z) => x / z,
-      (y, z) => y * z
-    )}`,
+    clause`(X, Y, Z) :- ${reversibleTernary((x, y, z) => x / y === z, (x, y) => x / y, (x, z) => x / z, (y, z) => y * z)}`,
     clause`(0, _, 0)`,
     clause`(X, X, 1)`,
     clause`(X, 1, X)`

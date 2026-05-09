@@ -112,31 +112,10 @@ const bitNotReversible =
   };
 
 export const rules = lowerRules([
-  rule(
-    'bitAnd',
-    3
-  )(
-    clause`(X, Y, Z) :- ${forwardTernary(
-      (x, y) => x & y,
-      (x, y, z) => (x & y) === z
-    )}`
-  ),
-  rule(
-    'bitOr',
-    3
-  )(
-    clause`(X, Y, Z) :- ${forwardTernary(
-      (x, y) => x | y,
-      (x, y, z) => (x | y) === z
-    )}`
-  ),
+  rule('bitAnd', 3)(clause`(X, Y, Z) :- ${forwardTernary((x, y) => x & y, (x, y, z) => (x & y) === z)}`),
+  rule('bitOr',  3)(clause`(X, Y, Z) :- ${forwardTernary((x, y) => x | y, (x, y, z) => (x | y) === z)}`),
   rule('bitXor', 3)(
-    clause`(X, Y, Z) :- ${reversibleTernary(
-      (x, y, z) => (x ^ y) === z,
-      (x, y) => x ^ y,
-      (x, z) => x ^ z,
-      (y, z) => y ^ z
-    )}`,
+    clause`(X, Y, Z) :- ${reversibleTernary((x, y, z) => (x ^ y) === z, (x, y) => x ^ y, (x, z) => x ^ z, (y, z) => y ^ z)}`,
     clause`(0, Y, Y)`,
     clause`(X, 0, X)`,
     clause`(X, X, 0)`

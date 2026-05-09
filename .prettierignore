@@ -1,2 +1,3 @@
 /.windsurf/workflows
 /.claude/commands
+/src/rules/*.js

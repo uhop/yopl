@@ -93,90 +93,41 @@ export const listHead = (...args) => {
 
 const compiled = lowerRules([
   // types
-  rule(
-    'isVar',
-    1
-  )(
-    clause`(X) :- ${({X}) =>
-      env =>
-        !X.isBound(env)}`
-  ),
-  rule(
-    'isNonVar',
-    1
-  )(
-    clause`(X) :- ${({X}) =>
-      env =>
-        X.isBound(env)}`
-  ),
-  rule(
-    'isNumber',
-    1
-  )(
-    clause`(X) :- ${({X}) =>
-      env =>
-        X.isBound(env) && typeof X.get(env) == 'number'}`
-  ),
-  rule(
-    'isString',
-    1
-  )(
-    clause`(X) :- ${({X}) =>
-      env =>
-        X.isBound(env) && typeof X.get(env) == 'string'}`
-  ),
-  rule(
-    'isNull',
-    1
-  )(
-    clause`(X) :- ${({X}) =>
-      env =>
-        X.isBound(env) && X.get(env) === null}`
-  ),
-  rule(
-    'isUndefined',
-    1
-  )(
-    clause`(X) :- ${({X}) =>
-      env =>
-        X.isBound(env) && X.get(env) === undefined}`
-  ),
-  rule(
-    'isArray',
-    1
-  )(
-    clause`(X) :- ${({X}) =>
-      env =>
-        X.isBound(env) && Array.isArray(X.get(env))}`
-  ),
+  rule('isVar',       1)(clause`(X) :- ${({X}) => env => !X.isBound(env)}`),
+  rule('isNonVar',    1)(clause`(X) :- ${({X}) => env =>  X.isBound(env)}`),
+  rule('isNumber',    1)(clause`(X) :- ${({X}) => env =>  X.isBound(env) && typeof X.get(env) == 'number'}`),
+  rule('isString',    1)(clause`(X) :- ${({X}) => env =>  X.isBound(env) && typeof X.get(env) == 'string'}`),
+  rule('isNull',      1)(clause`(X) :- ${({X}) => env =>  X.isBound(env) && X.get(env) === null}`),
+  rule('isUndefined', 1)(clause`(X) :- ${({X}) => env =>  X.isBound(env) && X.get(env) === undefined}`),
+  rule('isArray',     1)(clause`(X) :- ${({X}) => env =>  X.isBound(env) && Array.isArray(X.get(env))}`),
 
   // equality
-  rule('eq', 2)(clause`(X, X)`),
+  rule('eq',    2)(clause`(X, X)`),
   rule('notEq', 2)(clause`(X, X) :- !, fail`, clause`(_, _)`),
 
   // control predicates
-  rule('call', 1)(clause`(X) :- X`),
-  rule('not', 1)(clause`(X) :- X, !, fail`, clause`(_)`),
+  rule('call',        1)(clause`(X) :- X`),
+  rule('not',         1)(clause`(X) :- X, !, fail`,        clause`(_)`),
   rule('isUnifiable', 2)(clause`(X, Y) :- not(not(eq(X, Y)))`),
-  rule('conjunction', 1)(clause`(null)`, clause`([X | Xt]) :- X, conjunction(Xt)`),
-  rule('disjunction', 1)(clause`([X | _]) :- X`, clause`([_ | Xt]) :- disjunction(Xt)`),
-  rule('true', 0)(clause`()`),
-  rule('once', 1)(clause`(X) :- X, !`),
+  rule('conjunction', 1)(clause`(null)`,                   clause`([X | Xt]) :- X, conjunction(Xt)`),
+  rule('disjunction', 1)(clause`([X | _]) :- X`,           clause`([_ | Xt]) :- disjunction(Xt)`),
+  rule('true',        0)(clause`()`),
+  rule('once',        1)(clause`(X) :- X, !`),
 
   // extended logic
   rule('counterExample', 2)(clause`(A, B) :- A, not(B)`),
-  rule('implies', 2)(clause`(A, B) :- not(counterExample(A, B))`),
+  rule('implies',        2)(clause`(A, B) :- not(counterExample(A, B))`),
 
   // second-order logic
-  rule('map', 3)(clause`(_, null, null)`, clause`(F, [X | Xt], [Y | Yt]) :- F(X, Y), map(F, Xt, Yt)`),
+  rule('map',    3)(clause`(_, null, null)`,    clause`(F, [X | Xt], [Y | Yt]) :- F(X, Y), map(F, Xt, Yt)`),
   rule('filter', 3)(
     clause`(_, null, null)`,
-    clause`(P, [X | Xt], [X | Yt]) :- P(X), filter(P, Xt, Yt)`,
-    clause`(P, [X | Xt], Yt) :- not(P(X)), filter(P, Xt, Yt)`
+    clause`(P, [X | Xt], [X | Yt]) :- P(X),      filter(P, Xt, Yt)`,
+    clause`(P, [X | Xt],     Yt)   :- not(P(X)), filter(P, Xt, Yt)`
   ),
-  rule('foldl', 4)(clause`(_, A, null, A)`, clause`(F, A, [X | Xt], O) :- F(A, X, B), foldl(F, B, Xt, O)`),
+  rule('foldl', 4)(clause`(_, A, null, A)`, clause`(F, A, [X | Xt], O) :- F(A, X, B),       foldl(F, B, Xt, O)`),
   rule('foldr', 4)(clause`(_, A, null, A)`, clause`(F, A, [X | Xt], O) :- foldr(F, A, Xt, T), F(X, T, O)`),
-  rule('compose', 4)(clause`(F, G, X, O) :- G(X, T), F(T, O)`),
+  rule('compose',  4)(clause`(F, G, X, O) :- G(X, T), F(T, O)`),
   rule('converse', 4)(clause`(F, X, Y, O) :- F(Y, X, O)`)
 ]);
 compiled.unify = compiled.eq;
