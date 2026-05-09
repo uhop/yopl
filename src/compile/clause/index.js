@@ -60,92 +60,67 @@ const wrapGoalInterp = v => {
 
 // ---------------------------------------------------------------------------
 // Lexer
+//
+// One sticky-regex alternation per token: the regex engine (V8 Irregexp,
+// JIT-compiled) eats whole lexemes in native code; the JS side only
+// dispatches on the first character of an already-extracted match.
+// Same shape as `stream-json`'s parser, collapsed to one state because
+// the clause grammar is context-free at the lexer level.
 
-const isAlpha = c => (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c === '_';
-const isAlnum = c => isAlpha(c) || (c >= '0' && c <= '9');
-const isDigit = c => c >= '0' && c <= '9';
+const TOKEN_RE = /[ \t\n\r]+|:-|[()[\],|!]|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|-?\d+(?:\.\d+)?|[A-Za-z_]\w*/y;
 
 const tokenizeChunk = (text, tokens) => {
   let i = 0;
   const l = text.length;
   while (i < l) {
-    const c = text[i];
-    if (c === ' ' || c === '\t' || c === '\n' || c === '\r') {
-      ++i;
-      continue;
-    }
-    if (c === ':' && text[i + 1] === '-') {
+    TOKEN_RE.lastIndex = i;
+    const m = TOKEN_RE.exec(text);
+    if (!m) throw new Error(`unexpected character '${text[i]}' at offset ${i}`);
+    const lex = m[0];
+    const c = lex.charCodeAt(0);
+    i = TOKEN_RE.lastIndex;
+    if (c < 33) continue; // whitespace
+    if (c === 58) {
       tokens.push({kind: 'colondash'});
-      i += 2;
       continue;
-    }
-    if (c === '(') {
+    } // :
+    if (c === 40) {
       tokens.push({kind: 'lparen'});
-      ++i;
       continue;
-    }
-    if (c === ')') {
+    } // (
+    if (c === 41) {
       tokens.push({kind: 'rparen'});
-      ++i;
       continue;
-    }
-    if (c === '[') {
+    } // )
+    if (c === 91) {
       tokens.push({kind: 'lbracket'});
-      ++i;
       continue;
-    }
-    if (c === ']') {
+    } // [
+    if (c === 93) {
       tokens.push({kind: 'rbracket'});
-      ++i;
       continue;
-    }
-    if (c === ',') {
+    } // ]
+    if (c === 44) {
       tokens.push({kind: 'comma'});
-      ++i;
       continue;
-    }
-    if (c === '|') {
+    } // ,
+    if (c === 124) {
       tokens.push({kind: 'pipe'});
-      ++i;
       continue;
-    }
-    if (c === '!') {
+    } // |
+    if (c === 33) {
       tokens.push({kind: 'bang'});
-      ++i;
       continue;
-    }
-    if (c === '"' || c === "'") {
-      const quote = c;
-      let j = i + 1;
-      while (j < l && text[j] !== quote) {
-        if (text[j] === '\\') ++j;
-        ++j;
-      }
-      if (j >= l) throw new Error(`unterminated string at offset ${i}`);
-      const raw = text.slice(i + 1, j).replace(/\\(.)/g, '$1');
-      tokens.push({kind: 'string', value: raw});
-      i = j + 1;
+    } // !
+    if (c === 34 || c === 39) {
+      tokens.push({kind: 'string', value: lex.slice(1, -1).replace(/\\(.)/g, '$1')});
       continue;
-    }
-    if (isDigit(c) || (c === '-' && isDigit(text[i + 1]))) {
-      let j = i + (c === '-' ? 1 : 0);
-      while (j < l && isDigit(text[j])) ++j;
-      if (text[j] === '.') {
-        ++j;
-        while (j < l && isDigit(text[j])) ++j;
-      }
-      tokens.push({kind: 'number', value: Number(text.slice(i, j))});
-      i = j;
+    } // " or '
+    if (c === 45 || (c >= 48 && c <= 57)) {
+      tokens.push({kind: 'number', value: Number(lex)});
       continue;
-    }
-    if (isAlpha(c)) {
-      let j = i + 1;
-      while (j < l && isAlnum(text[j])) ++j;
-      tokens.push({kind: 'ident', value: text.slice(i, j)});
-      i = j;
-      continue;
-    }
-    throw new Error(`unexpected character '${c}' at offset ${i}`);
+    } // - or 0-9
+    tokens.push({kind: 'ident', value: lex}); // identifier
   }
 };
 
