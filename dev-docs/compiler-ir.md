@@ -242,6 +242,69 @@ Map of `src/rules/system.js` to IR is mechanical from the above. The
 `/rules/{math,bits,logic}.js` reversible operators reduce to rule #10 +
 small literal-head clauses (4, 12).
 
+## Practical patterns
+
+### Object literals as data with structural unification
+
+JSON-style objects flow through the IR as `Lit(value)`. The runtime
+sets `env.options.openObjects = true` (`src/solve.js:68`), so deep6
+performs structural unification — head and query objects match
+field-by-field, with subset semantics.
+
+```js
+import solve from 'yopl';
+import {variable as v} from 'deep6/unify.js';
+import assemble from 'deep6/traverse/assemble.js';
+import {rule, clause} from 'yopl/compile/clause/index.js';
+import {Lit} from 'yopl/compile/ir.js';
+import {lowerRules} from 'yopl/compile/lower.js';
+
+const rules = lowerRules([
+  rule('person', 1)(
+    clause`(${Lit({name: 'Alice', age: 30})})`,
+    clause`(${Lit({name: 'Bob',   age: 25})})`
+  )
+]);
+
+// 1. ground match
+solve(rules, 'person', [{name: 'Alice', age: 30}], () => console.log('hit'));
+
+// 2. bind a field
+const A = v('A');
+solve(rules, 'person', [{name: 'Alice', age: A}], env => {
+  console.log(assemble(A, env));   // → 30
+});
+
+// 3. enumerate
+const N = v('N'), B = v('B');
+solve(rules, 'person', [{name: N, age: B}], env => {
+  console.log(assemble(N, env), assemble(B, env));   // Alice 30, then Bob 25
+});
+
+// 4. subset query — works because openObjects is on
+solve(rules, 'person', [{name: 'Alice'}], () => console.log('subset hit'));
+```
+
+Three constraints worth knowing:
+
+1. **Multi-clause rules go in one `rule(...)` call.** `lowerRules`
+   keys by `rule.name` (`src/compile/lower.js:75`), so two separate
+   `rule('person', 1)(...)` invocations would overwrite.
+
+2. **Variables inside `Lit({...})` in clause heads are unsound.**
+   `lowerTerm` returns `term.value` verbatim across activations
+   (`src/compile/lower.js:25`); a logic Variable baked into the
+   object would alias every activation. For partial structure with
+   clause-scoped vars on the head side, fall back to a `Js` body
+   goal that decomposes the object manually.
+
+3. **Per-value match-mode wrappers from deep6 propagate.**
+   `Lit(open({...}))` locks subset matching regardless of env
+   options; `Lit(soft({...}))` extends both sides with each other's
+   keys. Both `open` and `soft` are `Unifier` factories exported
+   from `deep6/unify.js` and survive `Lit` wrapping without
+   ceremony.
+
 ## What is deliberately NOT in the IR (yet)
 
 | Concern                         | Why deferred                                                                                                                                         |
