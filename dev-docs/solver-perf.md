@@ -133,7 +133,7 @@ After all fixes, the suite grew from 60 → 115 tests. New coverage:
 ### Approach
 
 The audit above is the main Step 6 deliverable. The performance pass is
-deliberately conservative: I added a `dev-docs/bench.js` micro-benchmark
+deliberately conservative: I added a micro-benchmark (now under `bench/`)
 that runs a small set of representative workloads, captured a baseline,
 applied two non-invasive optimizations, and re-measured.
 
