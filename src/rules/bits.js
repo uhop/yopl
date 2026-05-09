@@ -5,17 +5,22 @@ import {rule, clause} from '../compile/clause/index.js';
 import {cut} from './system.js';
 
 // Forward-only ternary (bitAnd, bitOr): verify when all bound, compute
-// Z from X+Y, fail otherwise. No cut — these aren't reversible.
+// Z from X+Y, fail otherwise. Cuts only on the cases this helper
+// actually resolves (verify with all-3-bound, forward with X+Y-bound)
+// — for unsupported reverse modes (X+Z or Y+Z bound), it falls through
+// without cutting, so identity-fact alternatives at the rule level can
+// catch queries the main path can't enumerate (e.g. `0 | Y = Z` ⇒ Y=Z).
 const forwardTernary =
   (op, verify) =>
-  ({X, Y, Z}) =>
-  env => {
+  ({X, Y, Z}, sys) =>
+  (env, goals, stack) => {
     const isX = X.isBound(env),
       isY = Y.isBound(env),
       isZ = Z.isBound(env),
       count = (isX ? 1 : 0) + (isY ? 1 : 0) + (isZ ? 1 : 0);
     if (count < 2) return false;
     if (count == 3) {
+      cut(sys)(env, goals, stack);
       const x = X.get(env);
       if (x !== _ && typeof x != 'number') return false;
       const y = Y.get(env);
@@ -25,18 +30,16 @@ const forwardTernary =
       if (x === _ || y === _ || z === _) return true;
       return verify(x, y, z);
     }
-    if (isX) {
+    if (isX && isY) {
+      cut(sys)(env, goals, stack);
       const x = X.get(env);
       if (typeof x != 'number') return false;
-      if (isY) {
-        const y = Y.get(env);
-        if (typeof y != 'number') return false;
-        env.bindVal(Z.name, op(x, y));
-        return true;
-      }
-      return false;
+      const y = Y.get(env);
+      if (typeof y != 'number') return false;
+      env.bindVal(Z.name, op(x, y));
+      return true;
     }
-    return false;
+    return false; // reverse-mode (isX+isZ or isY+isZ) — let identity facts try
   };
 
 // Reversible ternary (bitXor): verify or compute any one missing operand
@@ -113,7 +116,11 @@ const bitNotReversible =
 
 export const rules = lowerRules([
   rule('bitAnd', 3)(clause`(X, Y, Z) :- ${forwardTernary((x, y) => x & y, (x, y, z) => (x & y) === z)}`),
-  rule('bitOr',  3)(clause`(X, Y, Z) :- ${forwardTernary((x, y) => x | y, (x, y, z) => (x | y) === z)}`),
+  rule('bitOr', 3)(
+    clause`(X, Y, Z) :- ${forwardTernary((x, y) => x | y, (x, y, z) => (x | y) === z)}`,
+    clause`(0, Y, Y)`,
+    clause`(X, 0, X)`
+  ),
   rule('bitXor', 3)(
     clause`(X, Y, Z) :- ${reversibleTernary((x, y, z) => (x ^ y) === z, (x, y) => x ^ y, (x, z) => x ^ z, (y, z) => y ^ z)}`,
     clause`(0, Y, Y)`,

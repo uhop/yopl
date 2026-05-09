@@ -188,10 +188,27 @@ export default [
   function test_bits_or_check_false() {
     eval(TEST('unify(collect(bitsRules, "bitOr", [0b1100, 0b0011, 0b1110]), [])'));
   },
-  function test_bits_or_reverse_unsupported() {
-    // Same convention as bitAnd: reverse mode returns no solutions.
+  function test_bits_or_reverse_no_identity_match() {
+    // Reverse mode without an identity hit returns no solutions —
+    // multiple X satisfy `X | 0b0011 = 0b1111` and the rule won't enumerate.
     const X = v('X');
     eval(TEST('unify(collect(bitsRules, "bitOr", [X, 0b0011, 0b1111]), [])'));
+  },
+  function test_bits_or_identity_left_zero_reverse() {
+    // bitOr(0, Y, 5) has the unique answer Y=5 via the `(0, Y, Y)` identity.
+    const Y = v('Y');
+    eval(TEST('unify(collect(bitsRules, "bitOr", [0, Y, 5], (e, r) => r.push(oneOf(Y, e))), [5])'));
+  },
+  function test_bits_or_identity_right_zero_reverse() {
+    // bitOr(X, 0, 5) has the unique answer X=5 via the `(X, 0, X)` identity.
+    const X = v('X');
+    eval(TEST('unify(collect(bitsRules, "bitOr", [X, 0, 5], (e, r) => r.push(oneOf(X, e))), [5])'));
+  },
+  function test_bits_or_forward_no_duplicate_when_X_is_zero() {
+    // Forward query with X=0: main clause computes Z=Y, cut prevents the
+    // identity facts from re-emitting the same answer.
+    const Z = v('Z');
+    eval(TEST('unify(collect(bitsRules, "bitOr", [0, 5, Z], (e, r) => r.push(oneOf(Z, e))), [5])'));
   },
   function test_bits_not_forward() {
     const Y = v('Y');
