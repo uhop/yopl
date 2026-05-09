@@ -4,6 +4,7 @@ import solve from '../src/solve.js';
 import {Rule, Clause, Var, Wild, Lit, Cons, Compound, Call, Cut, Fail, Js} from '../src/compile/ir.js';
 import {lowerRules} from '../src/compile/lower.js';
 import {validate, validateOrThrow} from '../src/compile/validate.js';
+import {rule, clause} from '../src/compile/clause/index.js';
 import {submit, TEST} from './harness.js';
 import {makeList} from './helpers.js';
 
@@ -139,6 +140,89 @@ export default [
     // On without externals — flags.
     const issues = validate(rules, {checkRuleReferences: true});
     eval(TEST("issues.length === 1 && issues[0].kind === 'unresolved-rule' && issues[0].target === 'bar'"));
+  },
+  function test_clause_member_via_template() {
+    // Same member rule as test_compile_member, written via the template DSL.
+    const member = rule('member', 2)(clause`([X | _], X)`, clause`([_ | T], X) :- member(T, X)`);
+    const rules = lowerRules([member]);
+    const list = makeList([1, 2, 3]),
+      X = v('X');
+    let result = [];
+    solve(rules, 'member', [list, 2], () => result.push(true));
+    eval(TEST('result.length === 1'));
+    result = [];
+    solve(rules, 'member', [list, X], env => result.push(assemble(X, env)));
+    eval(TEST('unify(result, [1, 2, 3])'));
+  },
+  function test_clause_cut_fail_literal() {
+    // notEq via template: covers cut + fail + literal-bare keywords.
+    const notEq = rule('notEq', 2)(clause`(X, X) :- !, fail`, clause`(_, _)`);
+    const rules = lowerRules([notEq]);
+    let result = [];
+    solve(rules, 'notEq', [1, 1], () => result.push(true));
+    eval(TEST('result.length === 0'));
+    result = [];
+    solve(rules, 'notEq', [1, 2], () => result.push(true));
+    eval(TEST('result.length === 1'));
+  },
+  function test_clause_compound_and_numbers() {
+    // isUnifiable via template: covers compound terms as data + interpolation
+    // is unnecessary because all atoms (eq, not) are static identifiers.
+    const rules = lowerRules([
+      rule('eq', 2)(clause`(X, X)`),
+      rule('not', 1)(clause`(X) :- X, !, fail`, clause`(_)`),
+      rule('isUnifiable', 2)(clause`(X, Y) :- not(not(eq(X, Y)))`)
+    ]);
+    let result = [];
+    solve(rules, 'isUnifiable', [1, 1], () => result.push(true));
+    eval(TEST('result.length === 1'));
+    result = [];
+    solve(rules, 'isUnifiable', [1, 2], () => result.push(true));
+    eval(TEST('result.length === 0'));
+  },
+  function test_clause_literal_keywords_in_head() {
+    // null / true / false / numbers as bare literals in head.
+    const rules = lowerRules([rule('isZero', 1)(clause`(0)`), rule('isNullArg', 1)(clause`(null)`), rule('isTrueArg', 1)(clause`(true)`)]);
+    let result = [];
+    solve(rules, 'isZero', [0], () => result.push(true));
+    eval(TEST('result.length === 1'));
+    result = [];
+    solve(rules, 'isZero', [1], () => result.push(true));
+    eval(TEST('result.length === 0'));
+    result = [];
+    solve(rules, 'isNullArg', [null], () => result.push(true));
+    eval(TEST('result.length === 1'));
+    result = [];
+    solve(rules, 'isTrueArg', [true], () => result.push(true));
+    eval(TEST('result.length === 1'));
+  },
+  function test_clause_dynamic_dispatch_via_template() {
+    // Uppercase identifier in goal-name position lowers to dynamic call.
+    const rules = lowerRules([
+      rule(
+        'pos',
+        1
+      )(
+        clause`(X) :- ${Js(
+          ({X}) =>
+            env =>
+              X.isBound(env) && X.get(env) > 0
+        )}`
+      ),
+      rule('callPred', 2)(clause`(P, X) :- P(X)`)
+    ]);
+    let result = [];
+    solve(rules, 'callPred', ['pos', 5], () => result.push(true));
+    eval(TEST('result.length === 1'));
+    result = [];
+    solve(rules, 'callPred', ['pos', -1], () => result.push(true));
+    eval(TEST('result.length === 0'));
+  },
+  function test_clause_validate_catches_bug_class() {
+    // The compiler catches arity drift in template-authored rules.
+    const broken = rule('foo', 2)(clause`(X, Y, Z)`); // arity 2 but head has 3
+    const issues = validate([broken]);
+    eval(TEST("issues.length === 1 && issues[0].kind === 'arity-mismatch'"));
   },
   function test_validate_or_throw() {
     const bad = [Rule('foo', 2, [Clause([Var('X')])])];
