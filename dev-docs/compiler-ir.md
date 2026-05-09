@@ -259,12 +259,7 @@ import {rule, clause} from 'yopl/compile/clause/index.js';
 import {Lit} from 'yopl/compile/ir.js';
 import {lowerRules} from 'yopl/compile/lower.js';
 
-const rules = lowerRules([
-  rule('person', 1)(
-    clause`(${Lit({name: 'Alice', age: 30})})`,
-    clause`(${Lit({name: 'Bob',   age: 25})})`
-  )
-]);
+const rules = lowerRules([rule('person', 1)(clause`(${Lit({name: 'Alice', age: 30})})`, clause`(${Lit({name: 'Bob', age: 25})})`)]);
 
 // 1. ground match
 solve(rules, 'person', [{name: 'Alice', age: 30}], () => console.log('hit'));
@@ -272,13 +267,14 @@ solve(rules, 'person', [{name: 'Alice', age: 30}], () => console.log('hit'));
 // 2. bind a field
 const A = v('A');
 solve(rules, 'person', [{name: 'Alice', age: A}], env => {
-  console.log(assemble(A, env));   // → 30
+  console.log(assemble(A, env)); // → 30
 });
 
 // 3. enumerate
-const N = v('N'), B = v('B');
+const N = v('N'),
+  B = v('B');
 solve(rules, 'person', [{name: N, age: B}], env => {
-  console.log(assemble(N, env), assemble(B, env));   // Alice 30, then Bob 25
+  console.log(assemble(N, env), assemble(B, env)); // Alice 30, then Bob 25
 });
 
 // 4. subset query — works because openObjects is on
@@ -304,6 +300,51 @@ Three constraints worth knowing:
    keys. Both `open` and `soft` are `Unifier` factories exported
    from `deep6/unify.js` and survive `Lit` wrapping without
    ceremony.
+
+### Per-call unification options via `unifyOpts/3`
+
+`unifyOpts(X, Y, Opts)` runs deep6's unification with an options bag
+scoped to a single call — the env's baseline options are restored
+before the goal returns. Useful when one clause needs tighter or
+looser semantics than the env default.
+
+```js
+const rules = lowerRules([
+  // strictEq opts OUT of openObjects so both sides must have the same
+  // key set. solve() puts openObjects: true on the env (subset
+  // semantics); strictEq overrides for this call only.
+  rule('strictEq', 2)(clause`(X, Y) :- unifyOpts(X, Y, ${Lit({openObjects: false})})`)
+]);
+```
+
+**Wrap the options bag with `Lit({...})` in clause source.** Raw
+plain-object interpolation throws via the auto-wrap fence ("must wrap
+explicitly"); `Lit` is the explicit pass-through. Same rule as any
+other JSON-style data literal flowing through the IR.
+
+For runtime-decided options, call `unifyOpts/3` from `solve(...)`
+with the bag as the third arg — no `Lit` at the runtime boundary:
+
+```js
+solve(rules, 'unifyOpts', [a, b, {openObjects: false}], cb);
+```
+
+Recognized option keys (deep6 v1.3 baseline; see `deep6/src/unify.js`
+for the authoritative list). `new Env()` initializes `options = {}`,
+so every flag starts `undefined` (falsy); `solve()` flips
+`openObjects` on (`src/solve.js:68`) and leaves the rest alone.
+
+| Key               | Default under `solve()` | Effect                                                   |
+| ----------------- | ----------------------- | -------------------------------------------------------- |
+| `openObjects`     | **`true`**              | plain objects: unify only the keys present in both sides |
+| `openArrays`      | falsy                   | arrays: unify only at common indices                     |
+| `openMaps`        | falsy                   | `Map`s: unify only at common keys                        |
+| `openSets`        | falsy                   | `Set`s: open-membership semantics                        |
+| `loose`           | falsy                   | `==` instead of `===` for primitives (`1 == "1"`)        |
+| `circular`        | falsy                   | track visited nodes; safe with cyclic structures         |
+| `ignoreFunctions` | falsy                   | skip function-vs-function comparison                     |
+| `signedZero`      | falsy                   | distinguish `+0` and `-0`                                |
+| `symbols`         | falsy                   | also compare symbol-keyed properties                     |
 
 ## What is deliberately NOT in the IR (yet)
 

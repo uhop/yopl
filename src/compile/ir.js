@@ -10,6 +10,13 @@
 // and inspectable in tests. See dev-docs/compiler-ir.md for the full
 // design rationale.
 
+// Re-exports — deep6 unification primitives that compose with `Lit` for
+// fine-grained per-value match control. Imported from one place so users
+// don't need to track deep6 sub-paths. See dev-docs/compiler-ir.md
+// § Practical patterns.
+export {open, soft} from 'deep6/unify.js';
+export {_, _ as any} from 'deep6/env.js';
+
 // ---------------------------------------------------------------------------
 // Terms
 //

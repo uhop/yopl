@@ -1,5 +1,6 @@
 // @ts-self-types="./system.d.ts"
 import {_, isVariable} from 'deep6/env.js';
+import {unify} from 'deep6/unify.js';
 import {lowerRules} from '../compile/lower.js';
 import {rule, clause} from '../compile/clause/index.js';
 
@@ -105,6 +106,19 @@ const compiled = lowerRules([
   rule('eq',    2)(clause`(X, X)`),
   rule('notEq', 2)(clause`(X, X) :- !, fail`, clause`(_, _)`),
 
+  // unification with options — Opts must be bound to a deep6 options bag
+  // (e.g. {openArrays: true, openObjects: false}). Scope is one call;
+  // env.options is restored before the goal returns.
+  rule('unifyOpts', 3)(clause`(X, Y, Opts) :- ${({X, Y, Opts}) => env => {
+    if (!Opts.isBound(env)) return false;
+    const opts = Opts.get(env);
+    if (!opts || typeof opts !== 'object') return false;
+    const savedOpts = env.options;
+    const result = unify(X, Y, env, opts);
+    env.options = savedOpts;
+    return !!result;
+  }}`),
+
   // control predicates
   rule('call',        1)(clause`(X) :- X`),
   rule('not',         1)(clause`(X) :- X, !, fail`,        clause`(_)`),
@@ -128,7 +142,34 @@ const compiled = lowerRules([
   rule('foldl', 4)(clause`(_, A, null, A)`, clause`(F, A, [X | Xt], O) :- F(A, X, B),       foldl(F, B, Xt, O)`),
   rule('foldr', 4)(clause`(_, A, null, A)`, clause`(F, A, [X | Xt], O) :- foldr(F, A, Xt, T), F(X, T, O)`),
   rule('compose',  4)(clause`(F, G, X, O) :- G(X, T), F(T, O)`),
-  rule('converse', 4)(clause`(F, X, Y, O) :- F(Y, X, O)`)
+  rule('converse', 4)(clause`(F, X, Y, O) :- F(Y, X, O)`),
+
+  // JS bridges — convert between JS arrays and yopl cons lists.
+  // Bidirectional: bind whichever side is unbound from the other.
+  rule('arrayList', 2)(clause`(A, L) :- ${({A, L}) => env => {
+    const aBound = A.isBound(env), lBound = L.isBound(env);
+    if (!aBound && !lBound) return false;
+    if (aBound) {
+      const arr = A.get(env);
+      if (!Array.isArray(arr)) return false;
+      let cell = null;
+      for (let i = arr.length - 1; i >= 0; --i) cell = {value: arr[i], next: cell};
+      return !!unify(L, cell, env);
+    }
+    let cur = L.get(env);
+    const arr = [];
+    while (cur !== null && cur !== undefined) {
+      if (isVariable(cur)) {
+        if (!cur.isBound(env)) return false; // open tail
+        cur = cur.get(env);
+        continue;
+      }
+      if (typeof cur !== 'object' || !('value' in cur)) return false;
+      arr.push(cur.value);
+      cur = cur.next;
+    }
+    return !!unify(A, arr, env);
+  }}`)
 ]);
 compiled.unify = compiled.eq;
 compiled.notUnifiable = compiled.notEq;

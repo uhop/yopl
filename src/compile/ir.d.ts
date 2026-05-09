@@ -3,6 +3,12 @@
 import type {Variable} from 'deep6/env.js';
 import type {GoalFn} from '../solve.js';
 
+// Re-exports — deep6 unification primitives that compose with `Lit` for
+// fine-grained per-value match control. See dev-docs/compiler-ir.md
+// § Practical patterns.
+export {open, soft} from 'deep6/unify.js';
+export {_, _ as any} from 'deep6/env.js';
+
 // ---------------------------------------------------------------------------
 // Terms
 

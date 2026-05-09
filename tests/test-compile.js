@@ -1,7 +1,7 @@
 import unify, {variable as v} from 'deep6/unify.js';
 import assemble from 'deep6/traverse/assemble.js';
 import solve from '../src/solve.js';
-import {Rule, Clause, Var, Wild, Lit, Cons, Compound, Call, Cut, Fail, Js} from '../src/compile/ir.js';
+import {Rule, Clause, Var, Wild, Lit, Cons, Compound, Call, Cut, Fail, Js, open, soft, _ as anyVal} from '../src/compile/ir.js';
 import {lowerRules} from '../src/compile/lower.js';
 import {validate, validateOrThrow} from '../src/compile/validate.js';
 import {rule, clause} from '../src/compile/clause/index.js';
@@ -294,5 +294,30 @@ export default [
       cleanThrew = true;
     }
     eval(TEST('!cleanThrew'));
+  },
+  function test_ir_reexports_open_lit_subset() {
+    // `open()` re-exported from yopl/compile/ir.js wraps a value so it
+    // matches subset-style regardless of env.options. Verifies the
+    // re-export surface composes with `Lit`.
+    const rules = lowerRules([rule('item', 1)(clause`(${Lit(open({tag: 'a'}))})`)]);
+    let result = [];
+    solve(rules, 'item', [{tag: 'a', extra: 1}], () => result.push(true));
+    eval(TEST('unify(result, [true])'));
+  },
+  function test_ir_reexports_soft_lit_extends() {
+    // `soft()` extends both sides with each other's keys after unification.
+    // Smoke-test the re-export and that the wrap survives Lit.
+    const rules = lowerRules([rule('row', 1)(clause`(${Lit(soft({a: 1}))})`)]);
+    const result = [];
+    solve(rules, 'row', [{b: 2}], () => result.push(true));
+    eval(TEST('unify(result, [true])'));
+  },
+  function test_ir_reexport_anyVal() {
+    // `_` (re-exported as `any` too) is the deep6 match-anything sentinel.
+    // Inside a Lit, it should accept any value at that slot.
+    const rules = lowerRules([rule('rec', 1)(clause`(${Lit({age: anyVal})})`)]);
+    const result = [];
+    solve(rules, 'rec', [{age: 99}], () => result.push(true));
+    eval(TEST('unify(result, [true])'));
   }
 ];

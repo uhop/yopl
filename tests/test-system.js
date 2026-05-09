@@ -368,5 +368,88 @@ export default [
     result = [];
     solve(systemRules, 'isUnifiable', [1, 2], () => result.push(true));
     eval(TEST('unify(result, [])'));
+  },
+  function test_unifyOpts_openArrays_subset() {
+    // With openArrays: true, [1, 2] unifies with [1, 2, 3] (subset).
+    let result = [];
+    solve(systemRules, 'unifyOpts', [[1, 2], [1, 2, 3], {openArrays: true}], () => result.push(true));
+    eval(TEST('unify(result, [true])'));
+    // Without the option, the same query fails (array length mismatch).
+    result = [];
+    solve(systemRules, 'unifyOpts', [[1, 2], [1, 2, 3], {}], () => result.push(true));
+    eval(TEST('unify(result, [])'));
+  },
+  function test_unifyOpts_unbound_options_fails() {
+    const Opts = v('Opts'),
+      result = [];
+    solve(systemRules, 'unifyOpts', [1, 1, Opts], () => result.push(true));
+    eval(TEST('unify(result, [])'));
+  },
+  function test_unifyOpts_non_object_options_fails() {
+    const result = [];
+    solve(systemRules, 'unifyOpts', [1, 1, 42], () => result.push(true));
+    eval(TEST('unify(result, [])'));
+  },
+  function test_unifyOpts_restores_env_options() {
+    // After a successful unifyOpts call, the env's baseline options must
+    // be unchanged — `openArrays` remains the solve()-default (false).
+    let captured = null;
+    solve(systemRules, 'unifyOpts', [[1, 2], [1, 2, 3], {openArrays: true}], env => (captured = env.options.openArrays));
+    eval(TEST('captured === undefined || captured === false'));
+  },
+  function test_arrayList_array_to_list() {
+    const L = v('L'),
+      result = [];
+    solve(systemRules, 'arrayList', [[1, 2, 3], L], env => result.push(assemble(L, env)));
+    eval(TEST('unify(result, [makeList([1, 2, 3])])'));
+  },
+  function test_arrayList_list_to_array() {
+    const A = v('A'),
+      result = [];
+    solve(systemRules, 'arrayList', [A, makeList([10, 20, 30])], env => result.push(assemble(A, env)));
+    eval(TEST('unify(result, [[10, 20, 30]])'));
+  },
+  function test_arrayList_empty() {
+    // Empty array ↔ null (yopl's empty-list).
+    const L = v('L');
+    let result = [];
+    solve(systemRules, 'arrayList', [[], L], env => result.push(assemble(L, env)));
+    eval(TEST('unify(result, [null])'));
+    const A = v('A');
+    result = [];
+    solve(systemRules, 'arrayList', [A, null], env => result.push(assemble(A, env)));
+    eval(TEST('unify(result, [[]])'));
+  },
+  function test_arrayList_both_bound_match() {
+    const result = [];
+    solve(systemRules, 'arrayList', [[1, 2], makeList([1, 2])], () => result.push(true));
+    eval(TEST('unify(result, [true])'));
+  },
+  function test_arrayList_both_bound_mismatch() {
+    const result = [];
+    solve(systemRules, 'arrayList', [[1, 2], makeList([1, 3])], () => result.push(true));
+    eval(TEST('unify(result, [])'));
+  },
+  function test_arrayList_both_unbound_fails() {
+    const A = v('A'),
+      L = v('L'),
+      result = [];
+    solve(systemRules, 'arrayList', [A, L], () => result.push(true));
+    eval(TEST('unify(result, [])'));
+  },
+  function test_arrayList_improper_list_fails() {
+    // Non-null, non-cons tail → reject.
+    const A = v('A'),
+      result = [];
+    solve(systemRules, 'arrayList', [A, {value: 1, next: 'oops'}], () => result.push(true));
+    eval(TEST('unify(result, [])'));
+  },
+  function test_arrayList_open_tail_fails() {
+    // List with an unbound-Variable tail → can't be flattened to a fixed array.
+    const A = v('A'),
+      T = v('T'),
+      result = [];
+    solve(systemRules, 'arrayList', [A, {value: 1, next: T}], () => result.push(true));
+    eval(TEST('unify(result, [])'));
   }
 ];

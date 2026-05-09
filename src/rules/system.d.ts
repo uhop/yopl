@@ -74,12 +74,18 @@ export declare const listHead: (...args: unknown[]) => unknown;
  *
  * - **Type predicates** — `isVar`, `isNonVar`, `isNumber`, `isString`,
  *   `isNull`, `isUndefined`, `isArray`.
- * - **Equality** — `eq`, `notEq`. Aliases: `unify` (≡ `eq`),
+ * - **Equality** — `eq`, `notEq`, `unifyOpts`. Aliases: `unify` (≡ `eq`),
  *   `notUnifiable` (≡ `notEq`).
  * - **Control** — `call`, `not`, `isUnifiable`, `conjunction`,
  *   `disjunction`, `true`, `once`.
  * - **Extended logic** — `counterExample`, `implies`.
  * - **Second-order** — `map`, `filter`, `foldl`, `foldr`, `compose`,
  *   `converse`.
+ * - **JS bridges** — `arrayList` (bidirectional JS array ↔ cons list).
+ *
+ * `unifyOpts(X, Y, Opts)` runs deep6 unification with a per-call
+ * options bag (`{openObjects, openArrays, openMaps, openSets,
+ * circular, loose, ignoreFunctions, signedZero, symbols}`); the env's
+ * baseline `options` is restored before the goal returns.
  */
 export declare const rules: Rules;
