@@ -21,20 +21,19 @@ function* prove(rules, goals, env) {
         env.pop();
         continue main;
       }
-      // Restore the outer goals' index to the post-call position so
-      // walking up from a re-succeeded match resumes at the correct
-      // next body goal. Downstream proof attempts mutate goals.index
-      // forward; on backtracking back to retry alternative rules
-      // here, that mutation must be undone or subsequent body goals
-      // get silently skipped.
-      frame.goals.index = frame.restoreIndex;
       while (frame.index < frame.ruleList.length) {
         const rule = frame.ruleList[frame.index++],
           vars = generateVariables(rule.length + 1),
           terms = (typeof rule == 'function' ? rule : rule.goals)(...vars);
         env.push();
         if (unify(terms[0].args || NO_ARGS, frame.args, env)) {
-          const newGoals = {terms, index: 1, next: frame.goals};
+          // restoreParent stamps the post-call position of the outer
+          // goals onto the new sub-goals. When the proof later walks
+          // up via .next, the outer's index is reset to this value —
+          // undoing any forward mutation made by downstream search,
+          // so subsequent body goals don't get silently skipped on
+          // backtracking-then-rematch paths.
+          const newGoals = {terms, index: 1, next: frame.goals, restoreParent: frame.restoreIndex};
           stack.push(frame, POP, {goals: newGoals});
           env.bindVal(vars[vars.length - 1].name, frame);
           continue main;
@@ -45,7 +44,9 @@ function* prove(rules, goals, env) {
     }
     let goals = frame.goals;
     while (goals && goals.index >= goals.terms.length) {
-      goals = goals.next;
+      const parent = goals.next;
+      if (parent && goals.restoreParent !== undefined) parent.index = goals.restoreParent;
+      goals = parent;
     }
     if (!goals) {
       yield env;

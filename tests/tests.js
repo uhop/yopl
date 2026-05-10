@@ -11,6 +11,7 @@ import compileTests from './test-compile.js';
 import compileExprTests from './test-compile-expr.js';
 import compilePrologTests from './test-compile-prolog.js';
 import solveBacktrackTests from './test-solve-backtrack.js';
+import zebraTests from './test-zebra.js';
 
 runAllTests([
   ...solveTests,
@@ -23,5 +24,6 @@ runAllTests([
   ...compileTests,
   ...compileExprTests,
   ...compilePrologTests,
-  ...solveBacktrackTests
+  ...solveBacktrackTests,
+  ...zebraTests
 ]);
