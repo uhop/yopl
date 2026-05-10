@@ -1,7 +1,6 @@
 // @ts-self-types="./logic.d.ts"
 import {_} from 'deep6/env.js';
-import {lowerRules} from '../compile/lower.js';
-import {rule, clause} from '../compile/clause/index.js';
+import {prolog} from '../compile/prolog/index.js';
 
 // Forward-only ternary for logicalAnd / logicalOr — verify when all
 // bound, compute Z from X+Y, fail when only Z and one operand bound.
@@ -95,9 +94,9 @@ const notReversible =
     return true;
   };
 
-export const rules = lowerRules([
-  rule('logicalAnd', 3)(clause`(X, Y, Z) :- ${logicalForwardTernary((x, y) => x && y)}`),
-  rule('logicalOr',  3)(clause`(X, Y, Z) :- ${logicalForwardTernary((x, y) => x || y)}`),
-  rule('logicalXor', 3)(clause`(X, Y, Z) :- ${xorReversible}`),
-  rule('logicalNot', 2)(clause`(X, Y)    :- ${notReversible}`)
-]);
+export const rules = prolog`
+  logicalAnd(X, Y, Z) :- ${logicalForwardTernary((x, y) => x && y)}.
+  logicalOr(X, Y, Z)  :- ${logicalForwardTernary((x, y) => x || y)}.
+  logicalXor(X, Y, Z) :- ${xorReversible}.
+  logicalNot(X, Y)    :- ${notReversible}.
+`;

@@ -1,7 +1,6 @@
 // @ts-self-types="./math.d.ts"
 import {_} from 'deep6/env.js';
-import {lowerRules} from '../compile/lower.js';
-import {rule, clause} from '../compile/clause/index.js';
+import {prolog} from '../compile/prolog/index.js';
 import {cut} from './system.js';
 
 // `is/2` arithmetic-expression evaluator. Walks the RHS term tree,
@@ -127,38 +126,37 @@ const negReversible =
     return true;
   };
 
-export const rules = lowerRules([
-  rule('add', 3)(
-    clause`(X, Y, Z) :- ${reversibleTernary((x, y, z) => x + y === z, (x, y) => x + y, (x, z) => z - x, (y, z) => z - y)}`,
-    clause`(0, Y, Y)`,
-    clause`(X, 0, X)`
-  ),
-  rule('sub', 3)(
-    clause`(X, Y, Z) :- ${reversibleTernary((x, y, z) => x - y === z, (x, y) => x - y, (x, z) => x - z, (y, z) => y + z)}`,
-    clause`(X, 0, X)`,
-    clause`(X, X, 0)`
-  ),
-  rule('mul', 3)(
-    clause`(X, Y, Z) :- ${reversibleTernary((x, y, z) => x * y === z, (x, y) => x * y, (x, z) => z / x, (y, z) => z / y)}`,
-    clause`(0, _, 0)`,
-    clause`(_, 0, 0)`,
-    clause`(1, X, X)`,
-    clause`(X, 1, X)`
-  ),
-  rule('div', 3)(
-    clause`(X, Y, Z) :- ${reversibleTernary((x, y, z) => x / y === z, (x, y) => x / y, (x, z) => x / z, (y, z) => y * z)}`,
-    clause`(0, _, 0)`,
-    clause`(X, X, 1)`,
-    clause`(X, 1, X)`
-  ),
-  rule('neg', 2)(clause`(X, Y) :- ${negReversible}`, clause`(0, 0)`),
-  rule('is', 2)(clause`(X, E) :- ${({X, E}) => env => {
+export const rules = prolog`
+  add(X, Y, Z) :- ${reversibleTernary((x, y, z) => x + y === z, (x, y) => x + y, (x, z) => z - x, (y, z) => z - y)}.
+  add(0, Y, Y).
+  add(X, 0, X).
+
+  sub(X, Y, Z) :- ${reversibleTernary((x, y, z) => x - y === z, (x, y) => x - y, (x, z) => x - z, (y, z) => y + z)}.
+  sub(X, 0, X).
+  sub(X, X, 0).
+
+  mul(X, Y, Z) :- ${reversibleTernary((x, y, z) => x * y === z, (x, y) => x * y, (x, z) => z / x, (y, z) => z / y)}.
+  mul(0, _, 0).
+  mul(_, 0, 0).
+  mul(1, X, X).
+  mul(X, 1, X).
+
+  div(X, Y, Z) :- ${reversibleTernary((x, y, z) => x / y === z, (x, y) => x / y, (x, z) => x / z, (y, z) => y * z)}.
+  div(0, _, 0).
+  div(X, X, 1).
+  div(X, 1, X).
+
+  neg(X, Y) :- ${negReversible}.
+  neg(0, 0).
+
+  is(X, E) :- ${({X, E}) => env => {
     const value = evalExpr(E, env);
     if (typeof value !== 'number') return false;
     if (X.isBound(env)) return X.get(env) === value;
     env.bindVal(X.name, value);
     return true;
-  }}`),
-  rule('=:=', 2)(clause`(X, Y) :- ${({X, Y}) => env => evalExpr(X, env) === evalExpr(Y, env)}`),
-  rule('=\\=', 2)(clause`(X, Y) :- ${({X, Y}) => env => evalExpr(X, env) !== evalExpr(Y, env)}`)
-]);
+  }}.
+
+  =:=(X, Y) :- ${({X, Y}) => env => evalExpr(X, env) === evalExpr(Y, env)}.
+  =\\=(X, Y) :- ${({X, Y}) => env => evalExpr(X, env) !== evalExpr(Y, env)}.
+`;

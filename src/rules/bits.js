@@ -1,7 +1,6 @@
 // @ts-self-types="./bits.d.ts"
 import {_} from 'deep6/env.js';
-import {lowerRules} from '../compile/lower.js';
-import {rule, clause} from '../compile/clause/index.js';
+import {prolog} from '../compile/prolog/index.js';
 import {cut} from './system.js';
 
 // Forward-only ternary (bitAnd, bitOr): verify when all bound, compute
@@ -114,18 +113,18 @@ const bitNotReversible =
     return true;
   };
 
-export const rules = lowerRules([
-  rule('bitAnd', 3)(clause`(X, Y, Z) :- ${forwardTernary((x, y) => x & y, (x, y, z) => (x & y) === z)}`),
-  rule('bitOr', 3)(
-    clause`(X, Y, Z) :- ${forwardTernary((x, y) => x | y, (x, y, z) => (x | y) === z)}`,
-    clause`(0, Y, Y)`,
-    clause`(X, 0, X)`
-  ),
-  rule('bitXor', 3)(
-    clause`(X, Y, Z) :- ${reversibleTernary((x, y, z) => (x ^ y) === z, (x, y) => x ^ y, (x, z) => x ^ z, (y, z) => y ^ z)}`,
-    clause`(0, Y, Y)`,
-    clause`(X, 0, X)`,
-    clause`(X, X, 0)`
-  ),
-  rule('bitNot', 2)(clause`(X, Y) :- ${bitNotReversible}`, clause`(0, 0)`)
-]);
+export const rules = prolog`
+  bitAnd(X, Y, Z) :- ${forwardTernary((x, y) => x & y, (x, y, z) => (x & y) === z)}.
+
+  bitOr(X, Y, Z) :- ${forwardTernary((x, y) => x | y, (x, y, z) => (x | y) === z)}.
+  bitOr(0, Y, Y).
+  bitOr(X, 0, X).
+
+  bitXor(X, Y, Z) :- ${reversibleTernary((x, y, z) => (x ^ y) === z, (x, y) => x ^ y, (x, z) => x ^ z, (y, z) => y ^ z)}.
+  bitXor(0, Y, Y).
+  bitXor(X, 0, X).
+  bitXor(X, X, 0).
+
+  bitNot(X, Y) :- ${bitNotReversible}.
+  bitNot(0, 0).
+`;
