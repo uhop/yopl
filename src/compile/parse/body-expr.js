@@ -71,8 +71,6 @@ const GOAL_ALIASES = {
   '\\=': 'notEq',
   '==': 'eq',
   '\\==': 'notEq',
-  '=:=': 'eq',
-  '=\\=': 'notEq',
   '<': 'lt',
   '>': 'gt',
   '=<': 'le',

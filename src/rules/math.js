@@ -158,5 +158,7 @@ export const rules = lowerRules([
     if (X.isBound(env)) return X.get(env) === value;
     env.bindVal(X.name, value);
     return true;
-  }}`)
+  }}`),
+  rule('=:=', 2)(clause`(X, Y) :- ${({X, Y}) => env => evalExpr(X, env) === evalExpr(Y, env)}`),
+  rule('=\\=', 2)(clause`(X, Y) :- ${({X, Y}) => env => evalExpr(X, env) !== evalExpr(Y, env)}`)
 ]);
