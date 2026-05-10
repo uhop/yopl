@@ -17,6 +17,7 @@ Three public subpaths under `yopl/compile`:
 - `yopl/compile` — IR constructors (`Var`, `Wild`, `Lit`, `Cons`, `Compound`, `List`, `Call`, `Cut`, `Fail`, `Js`, `Clause`, `Rule`), lowering (`lowerRule`, `lowerRules`), validation (`validate`, `validateOrThrow`), the IR-attachment symbol (`IR`), and `deep6` re-exports (`open`, `soft`, `_`, `any`).
 - `yopl/compile/clause` — per-clause tagged-template DSL: `rule(name, arity)(clause\`...\`, ...)`.
 - `yopl/compile/prolog` — strict-Prolog tagged-template program/clause parsers: `prolog\`...\``, `prologClause\`...\``.
+- `yopl/compile/prolog/file` — filesystem convenience: `prologFile(url, options?)` (sync) and `prologFileAsync(url, options?)` (async, for parallel loading via `Promise.all`). Both wrap `node:fs` `readFileSync` / `readFile` + `prolog()`. Works in Node, Bun, and Deno.
 
 Per-clause form (anonymous head, name supplied externally):
 

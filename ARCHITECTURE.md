@@ -195,6 +195,9 @@ import {rule, clause} from 'yopl/compile/clause';
 // Strict-Prolog tagged-template parsers (whole program + single clause)
 import {prolog, prologClause} from 'yopl/compile/prolog';
 
+// Filesystem convenience: load a `.pl` file (sync or async)
+import {prologFile, prologFileAsync} from 'yopl/compile/prolog/file';
+
 // Rules — spread to compose
 import {rules as systemRules} from 'yopl/rules/system.js';
 import {rules as nativeRules} from 'yopl/rules/native.js';

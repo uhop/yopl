@@ -70,6 +70,7 @@ Public subpath exports:
   constructors and the lowering / validation passes.
 - `yopl/compile/clause` — per-clause tagged-template DSL.
 - `yopl/compile/prolog` — strict-Prolog tagged-template parsers.
+- `yopl/compile/prolog/file` — filesystem-backed `prologFile(url, options?)` (sync) and `prologFileAsync(url, options?)` (async) loaders for `.pl` files.
 
 The longer `yopl/compile/<file>.js` paths still resolve (via the wildcard subpath fallback)
 but the three explicit subpaths above are the public surface.
@@ -118,6 +119,14 @@ Strict-Prolog tagged-template parsers — multi-clause programs with the head fu
   `{operators: [{name, priority, type, target?}]}` adds operator declarations.
 - `prologClause\`...\`` — single-clause variant; trailing `.` optional. Returns
   `{name, head, body, helpers?}` where `name` is the head functor.
+- `prologFile(url, options?)` and `prologFileAsync(url, options?)` from
+  `yopl/compile/prolog/file` — filesystem-backed convenience loaders that read a `.pl`
+  file and forward to `prolog(source, options)`. `url` is anything `fs.readFileSync` /
+  `fs/promises.readFile` accepts (string path, `URL`, etc.); UTF-8 is assumed. The async
+  form is the right default for loading many files in parallel:
+  `await Promise.all([prologFileAsync(a), prologFileAsync(b)])`. Lives in its own
+  subpath so browser bundles without filesystem access don't pull in `node:fs` —
+  Node, Bun, and Deno (Deno via its Node-compat layer) all run the module unmodified.
 
 Body-context features beyond `clause\`...\``:
 

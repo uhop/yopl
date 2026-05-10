@@ -10,6 +10,7 @@
     "./compile": "./src/compile/index.js",
     "./compile/clause": "./src/compile/clause/index.js",
     "./compile/prolog": "./src/compile/prolog/index.js",
+    "./compile/prolog/file": "./src/compile/prolog/file.js",
     "./*": "./src/*"
   },
   "scripts": {
