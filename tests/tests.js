@@ -15,6 +15,10 @@ import zebraTests from './test-zebra.js';
 import hanoiTests from './test-hanoi.js';
 import wgcTests from './test-wgc.js';
 import qsortTests from './test-qsort.js';
+import isTests from './test-is.js';
+import knightTests from './test-knight.js';
+import queensTests from './test-queens.js';
+import sudokuTests from './test-sudoku.js';
 
 runAllTests([
   ...solveTests,
@@ -31,5 +35,9 @@ runAllTests([
   ...zebraTests,
   ...hanoiTests,
   ...wgcTests,
-  ...qsortTests
+  ...qsortTests,
+  ...isTests,
+  ...knightTests,
+  ...queensTests,
+  ...sudokuTests
 ]);
