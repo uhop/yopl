@@ -12,6 +12,9 @@ import compileExprTests from './test-compile-expr.js';
 import compilePrologTests from './test-compile-prolog.js';
 import solveBacktrackTests from './test-solve-backtrack.js';
 import zebraTests from './test-zebra.js';
+import hanoiTests from './test-hanoi.js';
+import wgcTests from './test-wgc.js';
+import qsortTests from './test-qsort.js';
 
 runAllTests([
   ...solveTests,
@@ -25,5 +28,8 @@ runAllTests([
   ...compileExprTests,
   ...compilePrologTests,
   ...solveBacktrackTests,
-  ...zebraTests
+  ...zebraTests,
+  ...hanoiTests,
+  ...wgcTests,
+  ...qsortTests
 ]);

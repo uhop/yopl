@@ -36,7 +36,7 @@ import {rules as systemRules} from '../src/rules/system.js';
 import {submit, TEST} from './harness.js';
 
 const puzzle = prolog`
-  zebra(Houses, FishOwner, WaterDrinker) :-
+  zebra(Houses, ZebraOwner, WaterDrinker) :-
     Houses = [
       house(norwegian, C1, P1, D1, S1),
       house(N2, C2, P2, D2, S2),
@@ -72,7 +72,7 @@ const puzzle = prolog`
       house(_, blue, _, _, _),
       Houses
     ),
-    member(house(FishOwner, _, zebra, _, _), Houses),
+    member(house(ZebraOwner, _, zebra, _, _), Houses),
     member(house(WaterDrinker, _, _, water, _), Houses),
     distinct([norwegian, N2, N3, N4, N5]),
     distinct([C1, C2, C3, C4, C5]),
@@ -98,18 +98,18 @@ const zebraRules = {...systemRules, ...puzzle};
 export default [
   function test_zebra_unique_solution() {
     const Houses = v('Houses');
-    const Fish = v('Fish');
+    const Zebra = v('Zebra');
     const Water = v('Water');
     let solutionCount = 0;
-    let fishOwner = null;
+    let zebraOwner = null;
     let waterDrinker = null;
-    solve(zebraRules, 'zebra', [Houses, Fish, Water], env => {
+    solve(zebraRules, 'zebra', [Houses, Zebra, Water], env => {
       ++solutionCount;
-      fishOwner = assemble(Fish, env);
+      zebraOwner = assemble(Zebra, env);
       waterDrinker = assemble(Water, env);
     });
     eval(TEST('solutionCount === 1'));
-    eval(TEST('fishOwner === "japanese"'));
+    eval(TEST('zebraOwner === "japanese"'));
     eval(TEST('waterDrinker === "norwegian"'));
   }
 ];
