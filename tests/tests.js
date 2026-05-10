@@ -9,5 +9,17 @@ import nativeTests from './test-native.js';
 import rulesTests from './test-rules.js';
 import compileTests from './test-compile.js';
 import compileExprTests from './test-compile-expr.js';
+import compilePrologTests from './test-compile-prolog.js';
 
-runAllTests([...solveTests, ...genTests, ...asyncTests, ...asyncGenTests, ...systemTests, ...nativeTests, ...rulesTests, ...compileTests, ...compileExprTests]);
+runAllTests([
+  ...solveTests,
+  ...genTests,
+  ...asyncTests,
+  ...asyncGenTests,
+  ...systemTests,
+  ...nativeTests,
+  ...rulesTests,
+  ...compileTests,
+  ...compileExprTests,
+  ...compilePrologTests
+]);
