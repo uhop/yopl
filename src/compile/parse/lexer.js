@@ -9,13 +9,36 @@
 // Slot tokens (`{kind: 'interp', index}`) are emitted between adjacent
 // string chunks of a tagged template, allowing front-ends to consult
 // the corresponding interpolation value at parse time.
+//
+// Comments (`% line`, `/* block */`) are recognized out-of-band before
+// the main regex so unterminated block comments produce a clean error.
+// Whitespace, line comments, and block comments emit no tokens.
+//
+// Number literals are non-negative; unary minus is a parser concern
+// (the lexer emits `[sym -, number N]` for source `-N`). Symbolic
+// operator atoms (`=`, `\=`, `=:=`, `\+`, etc.) lex as `sym` tokens
+// with the operator string in `value`. The privileged `:-` keeps its
+// own kind for the head/body separator.
 
-const TOKEN_RE = /[ \t\n\r]+|:-|[()[\],|!]|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|-?\d+(?:\.\d+)?|[A-Za-z_]\w*/y;
+const TOKEN_RE = /[ \t\n\r]+|:-|[()[\],|!.;]|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|\d+(?:\.\d+)?|[A-Za-z_]\w*|[+\-*/\\^<>=~:?@#$&]+/y;
 
 export const tokenizeChunk = (text, tokens) => {
   let i = 0;
   const l = text.length;
   while (i < l) {
+    const ch = text.charCodeAt(i);
+    if (ch === 37) {
+      // % line comment
+      while (i < l && text.charCodeAt(i) !== 10) ++i;
+      continue;
+    }
+    if (ch === 47 && text.charCodeAt(i + 1) === 42) {
+      // /* block comment */
+      const end = text.indexOf('*/', i + 2);
+      if (end < 0) throw new Error(`unterminated block comment at offset ${i}`);
+      i = end + 2;
+      continue;
+    }
     TOKEN_RE.lastIndex = i;
     const m = TOKEN_RE.exec(text);
     if (!m) throw new Error(`unexpected character '${text[i]}' at offset ${i}`);
@@ -23,10 +46,6 @@ export const tokenizeChunk = (text, tokens) => {
     const c = lex.charCodeAt(0);
     i = TOKEN_RE.lastIndex;
     if (c < 33) continue; // whitespace
-    if (c === 58) {
-      tokens.push({kind: 'colondash'});
-      continue;
-    } // :
     if (c === 40) {
       tokens.push({kind: 'lparen'});
       continue;
@@ -55,15 +74,31 @@ export const tokenizeChunk = (text, tokens) => {
       tokens.push({kind: 'bang'});
       continue;
     } // !
+    if (c === 46) {
+      tokens.push({kind: 'period'});
+      continue;
+    } // .
+    if (c === 59) {
+      tokens.push({kind: 'semicolon'});
+      continue;
+    } // ;
+    if (lex === ':-') {
+      tokens.push({kind: 'colondash'});
+      continue;
+    }
     if (c === 34 || c === 39) {
       tokens.push({kind: 'string', value: lex.slice(1, -1).replace(/\\(.)/g, '$1')});
       continue;
     } // " or '
-    if (c === 45 || (c >= 48 && c <= 57)) {
+    if (c >= 48 && c <= 57) {
       tokens.push({kind: 'number', value: Number(lex)});
       continue;
-    } // - or 0-9
-    tokens.push({kind: 'ident', value: lex}); // identifier
+    } // 0-9
+    if ((c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c === 95) {
+      tokens.push({kind: 'ident', value: lex});
+      continue;
+    } // identifier
+    tokens.push({kind: 'sym', value: lex}); // symbolic operator atom
   }
 };
 
