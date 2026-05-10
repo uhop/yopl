@@ -58,15 +58,25 @@ Async generator solver.
 
 ## Rule compiler
 
-`yopl/compile/` ships a pure-data IR plus a per-clause tagged-template front-end. Rules are
-defined as `rule(name, arity)(clause\`...\`, clause\`...\`)` and lowered into the runtime
-shape `solve()` expects. The IR has 5 Term kinds (`var`, `wildcard`, `literal`, `cons`,
-`compound`) and 4 Goal kinds (`call`, `cut`, `fail`, `js`). See `dev-docs/compiler-ir.md`
-for the design.
+`yopl/compile/` ships a pure-data IR plus two tagged-template front-ends: a per-clause DSL
+(`yopl/compile/clause`) and a strict-Prolog whole-program parser (`yopl/compile/prolog`).
+Rules are emitted as IR and lowered into the runtime shape `solve()` expects. The IR has
+5 Term kinds (`var`, `wildcard`, `literal`, `cons`, `compound`) and 4 Goal kinds (`call`,
+`cut`, `fail`, `js`). See `dev-docs/compiler-ir.md` for the design.
 
-### `yopl/compile/ir.js`
+Public subpath exports:
 
-IR constructors and re-exports.
+- `yopl/compile` — IR + lowering + validation barrel. The recommended import for IR
+  constructors and the lowering / validation passes.
+- `yopl/compile/clause` — per-clause tagged-template DSL.
+- `yopl/compile/prolog` — strict-Prolog tagged-template parsers.
+
+The longer `yopl/compile/<file>.js` paths still resolve (via the wildcard subpath fallback)
+but the three explicit subpaths above are the public surface.
+
+### `yopl/compile` (IR + lowering + validation barrel)
+
+Re-exported from `ir.js`, `lower.js`, and `validate.js`. IR constructors and helpers:
 
 - `Var(name?)` — logic variable. Without a name argument, mints a fresh `Symbol`-named
   anonymous variable.
@@ -80,10 +90,11 @@ IR constructors and re-exports.
   per-value match control on `Lit`-wrapped values. `Lit(open({...}))` locks subset matching;
   `Lit(soft({...}))` extends both sides.
 
-### `yopl/compile/clause/index.js`
+### `yopl/compile/clause`
 
 Per-clause tagged-template DSL. `rule(name, arity)(...clauses)` returns an IR `Rule`; each
-clause is built via `clause\`HEAD :- BODY\`` (body optional). Inside a clause:
+clause is built via `clause\`HEAD :- BODY\`` (body optional). The clause head is anonymous
+(name supplied via `rule(name, ...)`). Inside a clause:
 
 - Uppercase identifiers parse as logic Variables (`X`, `_user`).
 - `_` is the wildcard.
@@ -94,10 +105,39 @@ clause is built via `clause\`HEAD :- BODY\`` (body optional). Inside a clause:
   - in goal position: function → `Js(factory)`; IR pass-through; everything else throws.
 - Strings can't span interpolation slots — wrap dynamic strings outside: `${'item' + i}`.
 
+### `yopl/compile/prolog`
+
+Strict-Prolog tagged-template parsers — multi-clause programs with the head functor in source.
+
+- `prolog\`...source...\`` — parses a whole program; returns the lowered runtime `Rules` dict
+  with the parsed IR attached under `Symbol.for('yopl.ir')` (importable as `IR` from
+  `yopl/compile`).
+- `prolog(source, options?)` — function form; `source` is a string (e.g. file content).
+- `prolog(options)` / `prolog.with(options)` — configurator; returns a fresh tag closing
+  over merged options. `{lower: false}` returns the IR dict instead of the runtime dict.
+  `{operators: [{name, priority, type, target?}]}` adds operator declarations.
+- `prologClause\`...\`` — single-clause variant; trailing `.` optional. Returns
+  `{name, head, body, helpers?}` where `name` is the head functor.
+
+Body-context features beyond `clause\`...\``:
+
+- Operators: `,` (conjunction at 1000), `;` (disjunction at 1100, mints `$or_<N>` helpers),
+  `->` (if-then at 1050, mints `$ite_<N>` helpers), `\+` (negation at 900, desugars to `not`).
+- Goal aliases: `=`→`eq`, `\=`→`notEq`, `==`→`eq`, `\==`→`notEq`, `<`→`lt`, `>`→`gt`,
+  `=<`→`le`, `>=`→`ge`. Applied at goalize time so `X = Y` in body emits `Call('eq', ...)`
+  while `foo(X = Y)` in arg position emits `Compound('=', ...)`.
+- Op directives: `:- op(P, T, N).` (ISO) and `:- op(P, T, N, Pred).` (yopl `op/4` aliasing).
+  Per-invocation scope; never leaks to the next call.
+- Bare lowercase atoms in arg position parse as `Lit(name)` (matches yopl's runtime
+  atom-as-string convention). The `clause\`...\`` form rejects bare atoms.
+
+The two front-ends emit identical IR for the shared subset; the `prolog` form additionally
+covers the body-operator and atom-syntax features above.
+
 ### `yopl/compile/lower.js`
 
 `lowerRules(rules)` and `lowerRule(rule)` produce the runtime rule dict. Each clause is
-walked per activation with fresh logic Variables.
+walked per activation with fresh logic Variables. Re-exported from `yopl/compile`.
 
 The **Lit-walker** descends into plain objects and arrays inside `Lit(value)` and
 recursively lowers any nested IR node (`Var`, `Wild`, `Lit`, `Cons`, `Compound`). So
@@ -111,6 +151,7 @@ field that isn't an IR discriminator are safe.
 `validate(rules, options?)` returns an array of issue objects. Issue kinds: `arity-mismatch`,
 `call-arity-mismatch`, `undeclared-var`, `duplicate-rule`, `unresolved-rule` (opt-in via
 `options.checkRuleReferences`). `validateOrThrow(...)` raises on the first non-empty result.
+Re-exported from `yopl/compile`.
 
 ## Rule libraries
 

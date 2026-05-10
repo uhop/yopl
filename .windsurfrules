@@ -44,11 +44,14 @@ yopl/
 │   │   ├── gen.js        # Synchronous generator-based solver
 │   │   ├── async.js      # Async callback-based solver
 │   │   └── asyncGen.js   # Async generator-based solver
-│   ├── compile/          # Rule compiler (IR + lowering + per-clause DSL)
-│   │   ├── ir.js         # 5 Term + 4 Goal IR kinds, Clause, Rule, IR_KINDS
+│   ├── compile/          # Rule compiler (IR + lowering + two front-ends)
+│   │   ├── index.js      # Public barrel: IR + lowering + validation re-exports
+│   │   ├── ir.js         # 5 Term + 4 Goal IR kinds, Clause, Rule, IR_KINDS, IR symbol
 │   │   ├── lower.js      # IR → runtime rule fns (incl. the Lit-walker)
 │   │   ├── validate.js   # Static-bug-class checks (arity, call-arity, vars, dupes)
-│   │   └── clause/       # Per-clause tagged-template DSL: rule(name, arity)(clause`...`)
+│   │   ├── parse/        # Lexer, cursor, Pratt expr/body-expr parsers (shared)
+│   │   ├── clause/       # Per-clause tagged-template DSL: rule(name, arity)(clause`...`)
+│   │   └── prolog/       # Strict-Prolog tagged-template parsers: prolog`...`, prologClause`...`
 │   └── rules/            # Built-in rule library
 │       ├── logic.js      # Logical connectives
 │       ├── comp.js       # Comparison rules
@@ -85,13 +88,17 @@ yopl/
   - `gen.js` — synchronous generator yielding one `Env` per solution.
   - `async.js` — async callback-based driver for `await`-bearing predicates.
   - `asyncGen.js` — async generator combining the two.
-- **Rule compiler** (`src/compile/`) — pure-data IR plus a lowering pass. Rules are written as
-  `rule(name, arity)(clause...)` using the per-clause tagged-template DSL. The IR has 5 Term
-  kinds + 4 Goal kinds. Lowering substitutes activation-fresh logic Variables; the
-  **`Lit`-walker** descends into plain objects and arrays inside a literal's value, so a
-  template like `Lit({age: Var('A')})` doubles as a pattern matcher and a constructor.
-  Re-exports `open` / `soft` / `_` from `deep6` for fine-grained match control. Front-ends
-  emit IR; the runtime never sees IR. Design: `dev-docs/compiler-ir.md`.
+- **Rule compiler** (`src/compile/`) — pure-data IR plus a lowering pass and two
+  tagged-template front-ends. Rules can be written either with the per-clause DSL
+  (`rule(name, arity)(clause\`...\`)` from `yopl/compile/clause`) or with the strict-Prolog
+  whole-program parser (`prolog\`...\`` from `yopl/compile/prolog`); both emit identical IR
+  for the shared subset. The IR has 5 Term kinds + 4 Goal kinds. Lowering substitutes
+  activation-fresh logic Variables; the **`Lit`-walker** descends into plain objects and
+  arrays inside a literal's value, so a template like `Lit({age: Var('A')})` doubles as a
+  pattern matcher and a constructor. The public barrel `yopl/compile` re-exports IR
+  constructors + lowering + validation + `open` / `soft` / `_` / `any` from `deep6` for
+  fine-grained match control. Front-ends emit IR; the runtime never sees IR. Design:
+  `dev-docs/compiler-ir.md`.
 - **Rule library** (`src/rules/`) — built-in predicates split by domain:
   - `system.js` — generic logic-programming: helpers (`head`, `term`, `list`, `listHead`,
     `rest`), control (`call`, `cut`, `fail`, `halt`, `isBound`, `not`, `true`, `once`, `eq`,

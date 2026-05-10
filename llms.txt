@@ -12,12 +12,17 @@ to `deep6`, yopl's only runtime dependency (a zero-dependency library).
 
 ## Rule compiler
 
-Rules can be defined declaratively via the per-clause tagged-template DSL:
+Three public subpaths under `yopl/compile`:
+
+- `yopl/compile` — IR constructors (`Var`, `Wild`, `Lit`, `Cons`, `Compound`, `List`, `Call`, `Cut`, `Fail`, `Js`, `Clause`, `Rule`), lowering (`lowerRule`, `lowerRules`), validation (`validate`, `validateOrThrow`), the IR-attachment symbol (`IR`), and `deep6` re-exports (`open`, `soft`, `_`, `any`).
+- `yopl/compile/clause` — per-clause tagged-template DSL: `rule(name, arity)(clause\`...\`, ...)`.
+- `yopl/compile/prolog` — strict-Prolog tagged-template program/clause parsers: `prolog\`...\``, `prologClause\`...\``.
+
+Per-clause form (anonymous head, name supplied externally):
 
 ```js
-import {rule, clause} from 'yopl/compile/clause/index.js';
-import {Lit, Var} from 'yopl/compile/ir.js';
-import {lowerRules} from 'yopl/compile/lower.js';
+import {rule, clause} from 'yopl/compile/clause';
+import {lowerRules} from 'yopl/compile';
 
 const rules = lowerRules([
   rule('member', 2)(
@@ -27,7 +32,20 @@ const rules = lowerRules([
 ]);
 ```
 
-The IR has 5 Term kinds (`var`, `wildcard`, `literal`, `cons`, `compound`) and 4 Goal kinds (`call`, `cut`, `fail`, `js`). The **Lit-walker** lowers `Lit({age: Var('A')})` per activation — Vars nested in plain objects/arrays inside a Lit get fresh activation Variables, so object literals double as pattern matchers. Maps, Sets, Dates, and `Wrap`-wrapped values pass through unchanged. `yopl/compile/ir.js` re-exports `open` / `soft` / `_` from `deep6` for fine-grained match control.
+Strict-Prolog form (head functor in source, multi-clause programs in one tag):
+
+```js
+import {prolog} from 'yopl/compile/prolog';
+
+const rules = prolog`
+  member(X, [X | _]).
+  member(X, [_ | T]) :- member(X, T).
+`;
+```
+
+`prolog\`...\`` returns the lowered runtime `Rules` dict by default with the parsed IR attached under `Symbol.for('yopl.ir')` (or the IR dict directly via `prolog.with({lower: false})\`...\``). Both front-ends emit the same IR for the shared subset; the strict-Prolog form additionally supports body operators (`,`, `;`, `->`, `\+`), goal aliases (`=`→`eq`, `<`→`lt`, …), op directives (`:- op(P, T, N).`), and bare lowercase atoms in arg position.
+
+The IR has 5 Term kinds (`var`, `wildcard`, `literal`, `cons`, `compound`) and 4 Goal kinds (`call`, `cut`, `fail`, `js`). The **Lit-walker** lowers `Lit({age: Var('A')})` per activation — Vars nested in plain objects/arrays inside a Lit get fresh activation Variables, so object literals double as pattern matchers. Maps, Sets, Dates, and `Wrap`-wrapped values pass through unchanged.
 
 See `dev-docs/compiler-ir.md` for the full design.
 
@@ -38,7 +56,7 @@ All rule modules export a spreadable `rules` object:
 - `yopl/rules/system.js` — helpers (`head`, `term`, `list`, `listHead`, `rest`, `Tail`) and control predicates (`call`, `cut`, `fail`, `halt`, `isBound`). The `rules` export adds `eq`/`unify`, `notEq`/`notUnifiable`, `unifyOpts` (per-call options bag), `not`, `isUnifiable`, `true`, `once`, `conjunction`, `disjunction`, generic type tests (`isVar`, `isNonVar`, `isNumber`, `isString`, `isNull`, `isUndefined`), `counterExample`, `implies`, and the higher-order predicates `map`, `filter`, `foldl`, `foldr`, `compose`, `converse`.
 - `yopl/rules/native.js` — JS-native bridges. **Type tests:** `isArray`, `isMap`, `isSet`, `isDate`. **Array:** `arrayList` (bidir array ↔ cons list), `arrayGet` (forward indexed lookup), `arraySet` (immutable single-index override), `arrayLength`. **Map:** `mapEntries` (bidir M ↔ list of `[K, V]` pairs), `mapGet`, `mapHas`. **Set:** `setItems` (bidir S ↔ list), `setHas`. **Date:** `dateTimestamp` (bidir D ↔ epoch ms), `dateComponents` / `dateComponentsUTC` (bidir D ↔ component bag, local + UTC variants). See `dev-docs/native-objects.md`.
 - `yopl/rules/comp.js` — `lt`, `le`, `gt`, `ge`, `nz`.
-- `yopl/rules/math.js` — `add`, `sub`, `mul`, `div`, `neg` (each reversible).
+- `yopl/rules/math.js` — `add`, `sub`, `mul`, `div`, `neg` (each reversible); `is/2` arithmetic-expression evaluator (binary `+`, `-`, `*`, `/`, `//`, `mod`, `min`, `max`; unary `+`, `-`, `abs`, `sqrt`, `floor`, `ceiling`, `round`, `sign`); `=:=` and `=\=` arithmetic comparison.
 - `yopl/rules/bits.js` — `bitAnd`, `bitOr`, `bitXor`, `bitNot`.
 - `yopl/rules/logic.js` — `logicalAnd`, `logicalOr`, `logicalXor`, `logicalNot`.
 
@@ -50,4 +68,4 @@ All rule modules export a spreadable `rules` object:
 - A rule body returns an array of terms whose first element is the head and whose remaining
   elements are body goals. A goal is a string, a `{name, args}` term, or an inline
   `(env, goals, stack) => boolean | GoalFrame` function.
-- Prefer the rule compiler (`yopl/compile/clause/index.js`) for new rules — it catches static-arity bugs and emits the right `call(...)` wrapping automatically.
+- Prefer the rule compiler (`yopl/compile/clause` for per-clause IR, `yopl/compile/prolog` for whole-program strict-Prolog source) for new rules — both catch static-arity bugs and emit the right `call(...)` wrapping automatically.

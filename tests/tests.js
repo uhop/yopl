@@ -11,6 +11,7 @@ import compileTests from './test-compile.js';
 import compileExprTests from './test-compile-expr.js';
 import compilePrologTests from './test-compile-prolog.js';
 import prologDogfoodTests from './test-prolog-dogfood.js';
+import publicExportsTests from './test-public-exports.js';
 import solveBacktrackTests from './test-solve-backtrack.js';
 import zebraTests from './test-zebra.js';
 import hanoiTests from './test-hanoi.js';
@@ -33,6 +34,7 @@ runAllTests([
   ...compileExprTests,
   ...compilePrologTests,
   ...prologDogfoodTests,
+  ...publicExportsTests,
   ...solveBacktrackTests,
   ...zebraTests,
   ...hanoiTests,

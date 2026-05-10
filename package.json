@@ -7,6 +7,9 @@
   "types": "src/solve.d.ts",
   "exports": {
     ".": "./src/solve.js",
+    "./compile": "./src/compile/index.js",
+    "./compile/clause": "./src/compile/clause/index.js",
+    "./compile/prolog": "./src/compile/prolog/index.js",
     "./*": "./src/*"
   },
   "scripts": {

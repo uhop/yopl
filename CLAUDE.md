@@ -24,7 +24,7 @@
 - Rule-based logic programming
 - Multiple driver styles (sync generator, async callback, async generator)
 - A built-in rule library (logic, comparison, arithmetic, bitwise, system, native)
-- A rule compiler with per-clause tagged-template DSL (`yopl/compile/`)
+- A rule compiler with per-clause tagged-template DSL (`yopl/compile/clause`) and a strict-Prolog whole-program parser (`yopl/compile/prolog`); IR + lowering + validation barrel at `yopl/compile`
 - Unification powered by [`deep6`](https://www.npmjs.com/package/deep6) — its only runtime dependency
 
 ## Key Conventions
@@ -54,10 +54,14 @@ import {rules as bitsRules} from 'yopl/rules/bits.js';
 import {rules as systemRules} from 'yopl/rules/system.js';
 import {rules as nativeRules} from 'yopl/rules/native.js';
 
-// Rule compiler — declarative DSL
-import {rule, clause} from 'yopl/compile/clause/index.js';
-import {Var, Lit} from 'yopl/compile/ir.js';
-import {lowerRules} from 'yopl/compile/lower.js';
+// Rule compiler — IR + lowering + validation barrel
+import {Var, Lit, lowerRules} from 'yopl/compile';
+
+// Per-clause tagged-template DSL
+import {rule, clause} from 'yopl/compile/clause';
+
+// Strict-Prolog tagged-template parsers
+import {prolog, prologClause} from 'yopl/compile/prolog';
 ```
 
 ## For AI Assistants

@@ -177,6 +177,18 @@ export declare const Clause: (head: Term[], body?: Goal[], vars?: string[]) => C
 export declare const Rule: (name: string, arity: number, clauses: Clause[]) => Rule;
 
 // ---------------------------------------------------------------------------
+// Metadata symbols
+
+/**
+ * Registry-scoped key (`Symbol.for('yopl.ir')`) under which strict-Prolog
+ * `prolog\`...\`` returns (when lowering is enabled) attach the parsed
+ * IR `Rules` dict alongside the lowered runtime functions. Cross-realm
+ * safe; consumers can grab it via `Symbol.for('yopl.ir')` without
+ * importing this binding.
+ */
+export declare const IR: unique symbol;
+
+// ---------------------------------------------------------------------------
 // Helpers
 
 /**

@@ -15,11 +15,14 @@ src/                      # ES6 source code
 │   ├── gen.js            # Synchronous generator-based solver
 │   ├── async.js          # Async callback-based solver
 │   └── asyncGen.js       # Async generator-based solver
-├── compile/              # Rule compiler (IR + lowering + per-clause DSL)
-│   ├── ir.js             # 5 Term + 4 Goal IR kinds, Clause, Rule, IR_KINDS
+├── compile/              # Rule compiler (IR + lowering + two front-ends)
+│   ├── index.js          # Public barrel: IR + lowering + validation re-exports
+│   ├── ir.js             # 5 Term + 4 Goal IR kinds, Clause, Rule, IR_KINDS, IR symbol
 │   ├── lower.js          # IR → runtime rule fns (incl. the Lit-walker)
 │   ├── validate.js       # Static-bug-class checks
-│   └── clause/           # Tagged-template DSL: rule(name, arity)(clause`...`)
+│   ├── parse/            # Lexer, cursor, Pratt expr/body-expr parsers (shared)
+│   ├── clause/           # Per-clause DSL: rule(name, arity)(clause`...`)
+│   └── prolog/           # Strict-Prolog parsers: prolog`...`, prologClause`...`
 └── rules/                # Built-in rule library
     ├── logic.js          # Logical connectives
     ├── comp.js           # Comparison rules
@@ -72,10 +75,15 @@ The `src/solvers/` modules wrap the core in alternative execution styles:
 ### Rule compiler
 
 `src/compile/` provides a pure-data IR plus a lowering pass that turns it into runtime rule
-functions. Front-ends (currently the per-clause tagged-template DSL in `compile/clause/`) emit
-IR; lowering is the only place that knows the runtime rule shape. The IR has 5 Term kinds
-(`var`, `wildcard`, `literal`, `cons`, `compound`) and 4 Goal kinds (`call`, `cut`, `fail`,
-`js`), plus `Clause` and `Rule`.
+functions. Two front-ends emit IR — the per-clause tagged-template DSL in `compile/clause/`
+and the strict-Prolog tagged-template parsers in `compile/prolog/` — both producing identical
+IR for the shared subset. Lowering is the only place that knows the runtime rule shape. The
+IR has 5 Term kinds (`var`, `wildcard`, `literal`, `cons`, `compound`) and 4 Goal kinds
+(`call`, `cut`, `fail`, `js`), plus `Clause` and `Rule`.
+
+Three public subpath exports cover the compiler surface: `yopl/compile` (IR + lowering +
+validation barrel), `yopl/compile/clause` (per-clause DSL), `yopl/compile/prolog`
+(strict-Prolog whole-program / single-clause parsers).
 
 The **`Lit`-walker** (in `lower.js`) descends into plain objects and arrays inside a literal's
 value, recursively lowering any nested IR node with the activation's fresh logic Variables. So
@@ -83,8 +91,8 @@ value, recursively lowering any nested IR node with the activation's fresh logic
 the head matches an incoming object, and the same template renders an object when `A` is
 bound. Maps, Sets, Dates, and `Wrap`-wrapped values (`open`/`soft`) pass through unchanged.
 
-`compile/ir.js` re-exports `open`, `soft`, and `_` from `deep6` for fine-grained match control
-on `Lit`-wrapped values. See `dev-docs/compiler-ir.md` for the full design.
+`yopl/compile` re-exports `open`, `soft`, `_`, and `any` from `deep6` for fine-grained match
+control on `Lit`-wrapped values. See `dev-docs/compiler-ir.md` for the full design.
 
 ### Built-in rules
 
@@ -120,20 +128,24 @@ src/solvers/async.js       ── deep6/unify.js
 src/solvers/asyncGen.js    ── deep6/unify.js
 
 src/compile/ir.js          ── deep6/unify.js (open, soft), deep6/env.js (_)
-src/compile/lower.js       ── src/compile/ir.js, src/rules/system.js (call/cut/fail helpers)
+src/compile/lower.js       ── src/compile/ir.js, src/rules/system-runtime.js (call/cut/fail helpers)
 src/compile/validate.js    ── src/compile/ir.js
-src/compile/clause/        ── src/compile/ir.js
+src/compile/index.js       ── src/compile/{ir,lower,validate}.js  (public barrel)
+src/compile/clause/        ── src/compile/ir.js, src/compile/parse/
+src/compile/prolog/        ── src/compile/ir.js, src/compile/parse/, src/compile/lower.js
+src/compile/parse/         ── src/compile/ir.js  (lexer + cursor + Pratt + body-expr)
 
+src/rules/system-runtime.js ── deep6/env.js (cut/fail/halt/call leaf module)
 src/rules/system.js        ── deep6/env.js (_, isVariable), deep6/unify.js (unify),
-                              src/compile/lower.js, src/compile/clause/
+                              src/compile/prolog/, src/rules/system-runtime.js
 src/rules/native.js        ── deep6/env.js (isVariable), deep6/unify.js (unify),
                               src/compile/lower.js, src/compile/clause/
-src/rules/comp.js          ── deep6/env.js (_), src/compile/lower.js, src/compile/clause/
+src/rules/comp.js          ── deep6/env.js (_), src/compile/prolog/
 src/rules/math.js          ── deep6/env.js (_), src/rules/system.js (cut),
-                              src/compile/lower.js, src/compile/clause/
+                              src/compile/prolog/
 src/rules/bits.js          ── deep6/env.js (_), src/rules/system.js (cut),
-                              src/compile/lower.js, src/compile/clause/
-src/rules/logic.js         ── src/compile/lower.js, src/compile/clause/
+                              src/compile/prolog/
+src/rules/logic.js         ── src/compile/prolog/
 ```
 
 The solver drivers are independent — none of them imports the others or the rule library.
@@ -153,11 +165,35 @@ import solveGen from 'yopl/solvers/gen.js';
 import solveAsync from 'yopl/solvers/async.js';
 import solveAsyncGen from 'yopl/solvers/asyncGen.js';
 
-// Compiler — IR + lowering + per-clause front-end
-import {Var, Wild, Lit, Cons, Compound, Call, Cut, Fail, Js, Clause, Rule, open, soft, _} from 'yopl/compile/ir.js';
-import {lowerRules, lowerRule} from 'yopl/compile/lower.js';
-import {rule, clause} from 'yopl/compile/clause/index.js';
-import {validate, validateOrThrow} from 'yopl/compile/validate.js';
+// Compiler — IR + lowering + validation barrel
+import {
+  Var,
+  Wild,
+  Lit,
+  Cons,
+  Compound,
+  Call,
+  Cut,
+  Fail,
+  Js,
+  Clause,
+  Rule,
+  IR,
+  lowerRules,
+  lowerRule,
+  validate,
+  validateOrThrow,
+  open,
+  soft,
+  _,
+  any
+} from 'yopl/compile';
+
+// Per-clause tagged-template DSL
+import {rule, clause} from 'yopl/compile/clause';
+
+// Strict-Prolog tagged-template parsers (whole program + single clause)
+import {prolog, prologClause} from 'yopl/compile/prolog';
 
 // Rules — spread to compose
 import {rules as systemRules} from 'yopl/rules/system.js';

@@ -1,3 +1,5 @@
+// @ts-self-types="./index.d.ts"
+//
 // Strict-Prolog tagged-template entry points.
 //
 // `prolog\`...\`` parses a multi-clause program and returns a rules dict
