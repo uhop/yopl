@@ -1,11 +1,16 @@
-import {Var, Wild, Lit, Compound, List, Call, Cut, Fail, Js} from '../src/compile/ir.js';
+import unify, {variable as v} from 'deep6/unify.js';
+import assemble from 'deep6/traverse/assemble.js';
+import solve from '../src/solve.js';
+import {Var, Wild, Lit, Compound, List, Call, Cut, Fail, Js, IR} from '../src/compile/ir.js';
 import {tokenize} from '../src/compile/parse/lexer.js';
 import {makeCursor} from '../src/compile/parse/cursor.js';
 import {defaultTermOpTable} from '../src/compile/parse/op-table.js';
 import {parseClause, parseGoal, parseGoals} from '../src/compile/prolog/clause.js';
 import {parseProgram} from '../src/compile/prolog/program.js';
-import {prologClause} from '../src/compile/prolog/index.js';
+import {prolog, prologClause} from '../src/compile/prolog/index.js';
+import {rules as systemRules} from '../src/rules/system.js';
 import {submit, TEST} from './harness.js';
+import {makeList} from './helpers.js';
 
 const parse = (src, opTable = defaultTermOpTable(), values = []) => {
   const tokens = tokenize([src]);
@@ -322,5 +327,115 @@ export default [
     const inner = rules.q.clauses[0].body[0].args[1];
     // Expect Compound('+', [Var('X'), Compound('*', [Var('Y'), Lit(2)])])
     eval(TEST('eq(inner, Compound("+", [Var("X"), Compound("*", [Var("Y"), Lit(2)])]))'));
+  },
+
+  // -------------------------------------------------------------------------
+  // prolog`...` polymorphic-tag — tag form
+  function test_prolog_tag_basic_program() {
+    const rules = prolog`foo(X). bar(Y).`;
+    eval(TEST('typeof rules.foo === "object"'));
+    eval(TEST('typeof rules.bar === "object"'));
+    // Lowered: each rule is an array of compiled clause functions.
+    eval(TEST('Array.isArray(rules.foo)'));
+    eval(TEST('rules.foo.length === 1'));
+  },
+  function test_prolog_tag_attaches_ir_under_symbol() {
+    const rules = prolog`foo(X). foo(Y).`;
+    const ir = rules[IR];
+    eval(TEST('ir !== undefined'));
+    eval(TEST('ir.foo.name === "foo"'));
+    eval(TEST('ir.foo.arity === 1'));
+    eval(TEST('ir.foo.clauses.length === 2'));
+  },
+  function test_prolog_tag_lowered_runs_member_query() {
+    // End-to-end: parse → lower → solve.
+    const userRules = prolog`
+      member(X, [X | _]).
+      member(X, [_ | T]) :- member(X, T).
+    `;
+    const rules = {...systemRules, ...userRules};
+    const list = makeList([1, 2, 3]);
+    const X = v('X');
+    const out = [];
+    solve(rules, 'member', [X, list], env => out.push(assemble(X, env)));
+    eval(TEST('unify(out, [1, 2, 3])'));
+  },
+  function test_prolog_tag_uses_default_arithmetic_op_table() {
+    const rules = prolog`q(X, Y, Z) :- foo(Z, X + Y * 2).`;
+    const inner = rules[IR].q.clauses[0].body[0].args[1];
+    eval(TEST('eq(inner, Compound("+", [Var("X"), Compound("*", [Var("Y"), Lit(2)])]))'));
+  },
+  function test_prolog_tag_with_interpolation() {
+    const seven = 7;
+    const rules = prolog`only(${seven}).`;
+    eval(TEST('eq(rules[IR].only.clauses[0].head[0], Lit(7))'));
+  },
+
+  // prolog as configurator — returns a freshly-configured tag
+  function test_prolog_configurator_with_lower_false() {
+    const ir = prolog({lower: false})`foo(X). foo(Y).`;
+    // No lowering: the result IS the IR dict.
+    eval(TEST('ir.foo.name === "foo"'));
+    eval(TEST('ir.foo.clauses.length === 2'));
+    eval(TEST('ir[IR] === undefined'));
+  },
+  function test_prolog_configurator_with_operators() {
+    const customOps = [{priority: 700, type: 'xfx', name: '===', target: 'eq'}];
+    const rules = prolog({operators: customOps})`bar(X, Y) :- foo(X === Y).`;
+    // op/4 alias rewrites === → eq at parse time.
+    const arg = rules[IR].bar.clauses[0].body[0].args[0];
+    eval(TEST('eq(arg, Compound("eq", [Var("X"), Var("Y")]))'));
+  },
+  function test_prolog_configurator_does_not_mutate_default_table() {
+    // Calling the configurator and using the resulting tag shouldn't
+    // pollute future bare `prolog\`...\`` invocations. (Body operators
+    // not yet wired — exercise via arg position only.)
+    const _unused = prolog({operators: [{priority: 700, type: 'xfx', name: '@@'}]})`x(A) :- foo(A @@ A).`;
+    // After this call, the bare prolog tag's table should not have @@.
+    // Parse a program with @@ in arg position; under the bare table,
+    // `A @@ A` would fall back to bare-atom interpretation and the
+    // `@@` would lex as a sym → Lit('@@') which then leaves a stray
+    // ident `A` after, triggering a parse error.
+    let threw = false;
+    try {
+      prolog`y(A) :- foo(A @@ A).`;
+    } catch (e) {
+      threw = true;
+    }
+    eval(TEST('threw'));
+  },
+  function test_prolog_with_method_chains() {
+    // tag.with(opts) is a configurator alias.
+    const tag = prolog.with({operators: [{priority: 700, type: 'xfx', name: '===', target: 'eq'}]});
+    const rules = tag`bar(X, Y) :- foo(X === Y).`;
+    const arg = rules[IR].bar.clauses[0].body[0].args[0];
+    eval(TEST('eq(arg, Compound("eq", [Var("X"), Var("Y")]))'));
+  },
+
+  // prolog as string-form function
+  function test_prolog_string_form() {
+    const src = 'foo(X, Y). bar(Z).';
+    const rules = prolog(src);
+    eval(TEST('rules[IR].foo.arity === 2'));
+    eval(TEST('rules[IR].bar.arity === 1'));
+  },
+  function test_prolog_string_form_with_options_override() {
+    const src = 'foo(X). foo(Y).';
+    const ir = prolog(src, {lower: false});
+    eval(TEST('ir.foo.clauses.length === 2'));
+    eval(TEST('ir[IR] === undefined'));
+  },
+
+  // -------------------------------------------------------------------------
+  // prologClause polymorphic forms
+  function test_prolog_clause_string_form() {
+    const r = prologClause('foo(X, Y)');
+    eval(TEST('eq(r, {name: "foo", head: [Var("X"), Var("Y")], body: []})'));
+  },
+  function test_prolog_clause_configurator_with_operators() {
+    const customOps = [{priority: 700, type: 'xfx', name: '===', target: 'eq'}];
+    const r = prologClause({operators: customOps})`bar(X, Y) :- foo(X === Y)`;
+    const arg = r.body[0].args[0];
+    eval(TEST('eq(arg, Compound("eq", [Var("X"), Var("Y")]))'));
   }
 ];

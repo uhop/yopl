@@ -110,6 +110,15 @@ export const Clause = (head, body = [], vars) => {
 export const Rule = (name, arity, clauses) => ({name, arity, clauses});
 
 // ---------------------------------------------------------------------------
+// Metadata symbols
+
+// Registry-scoped key under which strict-Prolog `prolog\`...\`` returns
+// (when lowering is enabled) attach the parsed IR Rules dict alongside
+// the lowered runtime functions. Cross-realm safe; consumers can grab
+// it via `Symbol.for('yopl.ir')` without importing the symbol export.
+export const IR = Symbol.for('yopl.ir');
+
+// ---------------------------------------------------------------------------
 // Helpers
 
 // Walk a clause's head and body collecting user-var names in declaration
