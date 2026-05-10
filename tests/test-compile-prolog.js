@@ -476,14 +476,19 @@ export default [
     eval(TEST('eq(helper.clauses[0].body, [Call("a", [Var("X")])])'));
     eval(TEST('eq(helper.clauses[1].body, [Call("b", [Var("X")])])'));
   },
-  function test_body_op_if_then_throws() {
-    let threw = false;
-    try {
-      prologClause`branch(X) :- p(X) -> q(X)`;
-    } catch (e) {
-      threw = true;
-    }
-    eval(TEST('threw'));
+  function test_body_op_if_then_transforms_to_helper() {
+    // `Cond -> Then` standalone → $ite_<N> with one clause `:- Cond, !, Then.`
+    const r = prologClause`branch(X) :- p(X) -> q(X)`;
+    eval(TEST('r.body[0].kind === "call"'));
+    eval(TEST('r.body[0].name.startsWith("$ite_")'));
+    eval(TEST('r.helpers.length === 1'));
+    const helper = r.helpers[0];
+    eval(TEST('helper.clauses.length === 1'));
+    // Body: [Call('p', [X]), Cut(), Call('q', [X])]
+    eval(TEST('helper.clauses[0].body.length === 3'));
+    eval(TEST('eq(helper.clauses[0].body[0], Call("p", [Var("X")]))'));
+    eval(TEST('helper.clauses[0].body[1].kind === "cut"'));
+    eval(TEST('eq(helper.clauses[0].body[2], Call("q", [Var("X")]))'));
   },
   function test_body_op_paren_grouping() {
     // Parens preserve body-context operator parsing inside.
@@ -597,5 +602,80 @@ export default [
     const Z = v('Z');
     solve(rules, 'pick', [v('_'), Z], env => out.push(assemble(Z, env)));
     eval(TEST('unify(out, [1, 2])'));
+  },
+
+  // -------------------------------------------------------------------------
+  // if-then-else (`->` inside `;`)
+  function test_if_then_else_transforms_to_helper() {
+    const r = prologClause`branch(X, Y) :- (p(X) -> q(Y) ; r(Y))`;
+    eval(TEST('r.helpers.length === 1'));
+    const helper = r.helpers[0];
+    eval(TEST('helper.name.startsWith("$ite_")'));
+    eval(TEST('helper.clauses.length === 2'));
+    // Clause 1: :- p(X), !, q(Y).
+    eval(TEST('helper.clauses[0].body.length === 3'));
+    eval(TEST('helper.clauses[0].body[1].kind === "cut"'));
+    // Clause 2: :- r(Y).
+    eval(TEST('helper.clauses[1].body.length === 1'));
+    eval(TEST('eq(helper.clauses[1].body[0], Call("r", [Var("Y")]))'));
+  },
+  function test_if_then_else_with_prior_disjunction_branches() {
+    // `a(X) ; p(X) -> q(X) ; r(X)` — outer disjunction wraps an if-then-else.
+    const r = prologClause`branch(X) :- a(X) ; p(X) -> q(X) ; r(X)`;
+    // Should mint TWO helpers: outer $or_M with [a(X), call($ite_N)],
+    // and inner $ite_N for the if-then-else.
+    eval(TEST('r.helpers.length === 2'));
+    const orHelper = r.helpers.find(h => h.name.startsWith('$or_'));
+    const iteHelper = r.helpers.find(h => h.name.startsWith('$ite_'));
+    eval(TEST('orHelper !== undefined'));
+    eval(TEST('iteHelper !== undefined'));
+    eval(TEST('orHelper.clauses.length === 2'));
+    eval(TEST('iteHelper.clauses.length === 2'));
+  },
+  function test_if_then_end_to_end_succeeds_then_runs_then() {
+    // Cond succeeds → Then runs.
+    const userRules = prolog`
+      flagged(red).
+      route(X, hot) :- flagged(X) -> eq(hot, hot).
+      route(X, cold).
+    `;
+    const rules = {...systemRules, ...userRules};
+    const out = [];
+    const Y = v('Y');
+    solve(rules, 'route', ['red', Y], env => out.push(assemble(Y, env)));
+    // First clause: flagged(red) succeeds → eq(hot, hot) succeeds → Y = hot.
+    // Second clause: Y = cold (fallback).
+    eval(TEST('unify(out, ["hot", "cold"])'));
+  },
+  function test_if_then_end_to_end_cond_fails_blocks_then() {
+    // Cond fails → if-then helper fails → fallback to next clause.
+    const userRules = prolog`
+      flagged(red).
+      route(X, hot) :- flagged(X) -> eq(hot, hot).
+      route(_, cold).
+    `;
+    const rules = {...systemRules, ...userRules};
+    const out = [];
+    const Y = v('Y');
+    solve(rules, 'route', ['blue', Y], env => out.push(assemble(Y, env)));
+    // First clause: flagged(blue) fails → if-then fails → backtrack to second.
+    // Second clause: Y = cold.
+    eval(TEST('unify(out, ["cold"])'));
+  },
+  function test_if_then_else_end_to_end() {
+    // Cond succeeds → Then runs; Cond fails → Else runs.
+    const userRules = prolog`
+      flagged(red).
+      route(X, Tag) :- (flagged(X) -> eq(Tag, hot) ; eq(Tag, cold)).
+    `;
+    const rules = {...systemRules, ...userRules};
+    const out = [];
+    const Y = v('Y');
+    solve(rules, 'route', ['red', Y], env => out.push(assemble(Y, env)));
+    eval(TEST('unify(out, ["hot"])'));
+    const out2 = [];
+    const Y2 = v('Y');
+    solve(rules, 'route', ['blue', Y2], env => out2.push(assemble(Y2, env)));
+    eval(TEST('unify(out2, ["cold"])'));
   }
 ];

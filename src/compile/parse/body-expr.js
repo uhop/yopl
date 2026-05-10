@@ -26,16 +26,28 @@
 //   `Var(name)`               → `Call(Var(name), [])` (dynamic dispatch)
 //   `Cut`/`Fail`/`Js` IR      → kept as-is (already Goal IR)
 //
-// Disjunction transformation: for `(A ; B)`, capture the set of var
-// names that appear in BOTH the disjunction AND the enclosing clause
-// scope. Mint a fresh helper name (`$or_<N>` with a module-level
-// monotonic counter for global uniqueness across `prolog\`...\`` calls).
-// Generate one helper clause per branch with `Var(name)` head args
-// for each captured name. Replace the disjunction with a call to the
-// helper passing the captured vars. Vars appearing only inside the
-// disjunction stay branch-local; vars appearing only outside aren't
-// captured. Cut inside `;`-branches scopes opaquely to the helper
-// (transparent cut would need an IR `Disjunction` kind, deferred).
+// Disjunction transformation: for `(A ; B)`, mint a fresh helper rule
+// `$or_<N>` with one clause per branch and replace the disjunction
+// site with `Call('$or_<N>', captured-vars)`. Captured = vars used
+// across the disjunction intersected with the clause-scope set.
+//
+// If-then-else: `(Cond -> Then ; Else)` parses as
+// `;(->(Cond, Then), Else)` — a disjunction whose first branch is
+// `->`. Detected at the disjunction-collection step; minted as a
+// fresh `$ite_<N>` with two clauses: `:- Cond, !, Then.` and
+// `:- Else.`. The cut commits to the Then branch on Cond success,
+// preventing Else from being tried (standard Prolog semantics).
+//
+// Standalone `Cond -> Then` (no `;`) mints `$ite_<N>` with a single
+// `:- Cond, !, Then.` clause; the helper fails if Cond fails (no
+// fall-through, since there's no else).
+//
+// Disjunction with prior branches AND an if-then-else
+// (`A ; B ; (C -> T ; E)`) mints both an inner if-then-else helper
+// and an outer disjunction helper whose last clause calls the inner.
+// Cut inside `;`/`->` branches scopes opaquely to the helper
+// (transparent cut would need a dedicated `Disjunction` IR kind,
+// deferred).
 //
 // Maxprio for body parsing is 1200 — covers all body operators in
 // the default body op table.
@@ -68,7 +80,8 @@ const GOAL_ALIASES = {
 };
 
 let helperCounter = 0;
-const nextHelperName = () => `$or_${++helperCounter}`;
+const nextOrName = () => `$or_${++helperCounter}`;
+const nextIteName = () => `$ite_${++helperCounter}`;
 
 export const parseBodyPrimary = (cursor, opTable) => {
   const t = cursor.peek();
@@ -111,11 +124,28 @@ const collectVarsInTerm = (t, names = new Set()) => {
   return names;
 };
 
-const flattenSemicolon = t => {
-  if (t.kind === 'compound' && t.name === ';' && t.args.length === 2) {
-    return [...flattenSemicolon(t.args[0]), ...flattenSemicolon(t.args[1])];
+// Walk a right-recursive `;` chain collecting top-level branches.
+// If a `;`'s left arg is `->`, return early signaling an if-then-else
+// at that point — the caller routes accordingly.
+const collectDisjBranches = t => {
+  const branches = [];
+  let current = t;
+  while (current?.kind === 'compound' && current.name === ';' && current.args.length === 2) {
+    const left = current.args[0];
+    if (left?.kind === 'compound' && left.name === '->' && left.args.length === 2) {
+      return {branches, ifThen: {cond: left.args[0], then: left.args[1], elseTerm: current.args[1]}};
+    }
+    branches.push(left);
+    current = current.args[1];
   }
-  return [t];
+  branches.push(current);
+  return {branches, ifThen: null};
+};
+
+const computeCaptured = (terms, ctx) => {
+  const seen = new Set();
+  for (const t of terms) collectVarsInTerm(t, seen);
+  return [...seen].filter(name => ctx.clauseVars.has(name));
 };
 
 const goalizeWithCtx = (t, ctx) => {
@@ -130,7 +160,7 @@ const goalizeWithCtx = (t, ctx) => {
       return [transformDisjunction(t, ctx)];
     }
     if (t.name === '->' && t.args.length === 2) {
-      throw new Error(`if-then (->) not yet supported`);
+      return [transformIfThen(t.args[0], t.args[1], ctx)];
     }
     const goalName = typeof t.name === 'string' ? (GOAL_ALIASES[t.name] ?? t.name) : t.name;
     return [Call(goalName, t.args)];
@@ -147,17 +177,79 @@ const goalizeWithCtx = (t, ctx) => {
   throw new Error(`cannot use ${t.kind} as goal`);
 };
 
+const transformIfThen = (condTerm, thenTerm, ctx) => {
+  const captured = computeCaptured([condTerm, thenTerm], ctx);
+  const helperName = nextIteName();
+  const condGoals = goalizeWithCtx(condTerm, ctx);
+  const thenGoals = goalizeWithCtx(thenTerm, ctx);
+  const headArgs = captured.map(name => Var(name));
+  const body = [...condGoals, Cut(), ...thenGoals];
+  ctx.helpers.push(
+    Rule(helperName, captured.length, [
+      Clause(
+        captured.map(name => Var(name)),
+        body
+      )
+    ])
+  );
+  return Call(helperName, headArgs);
+};
+
+const transformIfThenElse = (condTerm, thenTerm, elseTerm, ctx) => {
+  const captured = computeCaptured([condTerm, thenTerm, elseTerm], ctx);
+  const helperName = nextIteName();
+  const condGoals = goalizeWithCtx(condTerm, ctx);
+  const thenGoals = goalizeWithCtx(thenTerm, ctx);
+  const elseGoals = goalizeWithCtx(elseTerm, ctx);
+  const clauses = [
+    Clause(
+      captured.map(name => Var(name)),
+      [...condGoals, Cut(), ...thenGoals]
+    ),
+    Clause(
+      captured.map(name => Var(name)),
+      elseGoals
+    )
+  ];
+  ctx.helpers.push(Rule(helperName, captured.length, clauses));
+  return Call(
+    helperName,
+    captured.map(name => Var(name))
+  );
+};
+
 const transformDisjunction = (t, ctx) => {
-  const disjunctionVars = collectVarsInTerm(t);
-  const captured = [...disjunctionVars].filter(name => ctx.clauseVars.has(name));
-  const helperName = nextHelperName();
-  const branches = flattenSemicolon(t);
-  const helperClauses = branches.map(branch => {
-    const branchBody = goalizeWithCtx(branch, ctx);
-    const headArgs = captured.map(name => Var(name));
-    return Clause(headArgs, branchBody);
-  });
-  ctx.helpers.push(Rule(helperName, captured.length, helperClauses));
+  const {branches, ifThen} = collectDisjBranches(t);
+  if (ifThen) {
+    const iteCall = transformIfThenElse(ifThen.cond, ifThen.then, ifThen.elseTerm, ctx);
+    if (branches.length === 0) return iteCall;
+    return mintDisjunctionHelper(t, branches, [iteCall], ctx);
+  }
+  return mintDisjunctionHelper(t, branches, [], ctx);
+};
+
+const mintDisjunctionHelper = (originalTerm, branchTerms, extraGoalBranches, ctx) => {
+  const captured = computeCaptured([originalTerm], ctx);
+  const helperName = nextOrName();
+  const clauses = [];
+  for (const branch of branchTerms) {
+    const body = goalizeWithCtx(branch, ctx);
+    clauses.push(
+      Clause(
+        captured.map(name => Var(name)),
+        body
+      )
+    );
+  }
+  for (const goal of extraGoalBranches) {
+    clauses.push(
+      Clause(
+        captured.map(name => Var(name)),
+        [goal]
+      )
+    );
+  }
+  ctx.helpers.push(Rule(helperName, captured.length, clauses));
   return Call(
     helperName,
     captured.map(name => Var(name))
