@@ -1,5 +1,6 @@
 // @ts-self-types="./gen.d.ts"
-import unify, {Env, variable} from 'deep6/unify.js';
+import unify, {variable} from 'deep6/unify.js';
+import {EnvMap} from 'deep6/env-map.js';
 
 let counter = 0;
 const generateVariables = count => {
@@ -67,7 +68,7 @@ function* prove(rules, goals, env) {
 }
 
 function* generate(rules, name, args) {
-  const env = new Env();
+  const env = new EnvMap();
   env.options.openObjects = true;
   const goals = {terms: [{name, args}], index: 0, next: null};
   yield* prove(rules, goals, env);

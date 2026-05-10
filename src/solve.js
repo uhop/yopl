@@ -1,5 +1,6 @@
 // @ts-self-types="./solve.d.ts"
-import unify, {Env, variable} from 'deep6/unify.js';
+import unify, {variable} from 'deep6/unify.js';
+import {EnvMap} from 'deep6/env-map.js';
 
 let counter = 0;
 const generateVariables = count => {
@@ -64,7 +65,7 @@ const prove = (rules, goals, env) => {
 };
 
 const solve = (rules, name, args, callback) => {
-  const env = new Env();
+  const env = new EnvMap();
   env.options.openObjects = true;
   const goals = {terms: [{name, args}, env => (callback(env), false)], index: 0, next: null};
   prove(rules, goals, env);
