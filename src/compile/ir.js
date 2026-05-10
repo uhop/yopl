@@ -101,9 +101,10 @@ export const Js = factory => ({kind: 'js', factory});
 //   arity: number
 //   clauses: Clause[]
 
-export const Clause = (head, body = [], vars) => {
+export const Clause = (head, body = [], vars, source) => {
   const c = {head, body};
   if (vars !== undefined) c.vars = vars;
+  if (source !== undefined) c.source = source;
   return c;
 };
 

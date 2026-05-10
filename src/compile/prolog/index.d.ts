@@ -27,6 +27,26 @@ export interface PrologOptions {
    * of the lowered runtime functions. Defaults to `true`.
    */
   lower?: boolean;
+  /**
+   * Source file path / URL to attach to each parsed clause's
+   * `source.file`. Only takes effect when `sourceMap` is `true`;
+   * silently ignored otherwise. Useful when loading from disk via
+   * `prologFile` (which threads the URL through automatically) or
+   * when feeding source text from a known origin.
+   */
+  file?: string;
+  /**
+   * When `true`, attach a `source: {file?, line, col}` annotation to
+   * each parsed `Clause` IR (and through to the lowered runtime fn
+   * via a non-enumerable `.source` property, and to validator
+   * `Issue.source` for per-clause errors). Defaults to `false` —
+   * production deployments that don't need source positions skip
+   * the per-clause memory cost.
+   *
+   * Roughly ~50 bytes per clause when on; flip on under a `debug`
+   * gate during development, leave off in production.
+   */
+  sourceMap?: boolean;
 }
 
 /**

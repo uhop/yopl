@@ -93,6 +93,13 @@ const lowerClause = clause => {
     return [{args: headArgs}, ...body];
   };
   Object.defineProperty(fn, 'length', {value: varNames.length});
+  // Carry the originating source position (if any) through to the
+  // lowered runtime fn so error reporters / stack-trace tooling can
+  // attribute proof-time failures back to the Prolog source. Stored
+  // non-enumerable so the rules dict still serializes as JSON cleanly.
+  if (clause.source !== undefined) {
+    Object.defineProperty(fn, 'source', {value: clause.source});
+  }
   return fn;
 };
 

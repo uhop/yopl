@@ -22,6 +22,11 @@ import {Clause as IRClause, Rule as IRRule} from '../ir.js';
 import {cloneOpTable, addOp} from '../parse/op-table.js';
 import {parseClause, parseGoal} from './clause.js';
 
+const withFile = (source, file) => {
+  if (source === undefined) return undefined;
+  return file === undefined ? source : {...source, file};
+};
+
 const litString = (term, what) => {
   if (term.kind !== 'literal' || typeof term.value !== 'string') {
     throw new Error(`${what} must be a string atom`);
@@ -74,7 +79,7 @@ const parseDirective = (cursor, opTable) => {
   applyDirective(goal, opTable);
 };
 
-export const parseProgram = (cursor, opTable) => {
+export const parseProgram = (cursor, opTable, file, sourceMap = false) => {
   const localTable = cloneOpTable(opTable);
   const groups = new Map();
   const helperRules = [];
@@ -84,8 +89,8 @@ export const parseProgram = (cursor, opTable) => {
       parseDirective(cursor, localTable);
       continue;
     }
-    const parsed = parseClause(cursor, localTable);
-    const {name, head, body} = parsed;
+    const parsed = parseClause(cursor, localTable, sourceMap);
+    const {name, head, body, source} = parsed;
     const arity = head.length;
     let group = groups.get(name);
     if (group === undefined) {
@@ -94,7 +99,7 @@ export const parseProgram = (cursor, opTable) => {
     } else if (group.arity !== arity) {
       throw new Error(`arity mismatch for '${name}': previously ${group.arity}, now ${arity}`);
     }
-    group.clauses.push(IRClause(head, body));
+    group.clauses.push(IRClause(head, body, undefined, withFile(source, file)));
     if (parsed.helpers) helperRules.push(...parsed.helpers);
   }
 

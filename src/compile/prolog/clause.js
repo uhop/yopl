@@ -108,7 +108,8 @@ export const parseGoals = (cursor, opTable) => {
   return goals;
 };
 
-export const parseClause = (cursor, opTable) => {
+export const parseClause = (cursor, opTable, sourceMap = false) => {
+  const headStart = cursor.peek();
   const {name, args: head} = parseHead(cursor, opTable);
   let body = [];
   let helpers = [];
@@ -118,6 +119,7 @@ export const parseClause = (cursor, opTable) => {
   }
   cursor.eat('period');
   const result = {name, head, body};
+  if (sourceMap) result.source = {line: headStart.line, col: headStart.col};
   if (helpers.length > 0) result.helpers = helpers;
   return result;
 };

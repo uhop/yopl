@@ -58,9 +58,12 @@ const compileClauseInternal = (strings, values, options) => {
   const tokens = tokenize(ensurePeriod(strings));
   const cursor = makeCursor(tokens, values);
   const opTable = buildOpTable(options);
-  const result = parseClause(cursor, opTable);
+  const result = parseClause(cursor, opTable, !!options.sourceMap);
   if (cursor.peek().kind !== 'eof') {
     throw new Error(`trailing tokens after clause: ${cursor.peek().kind}`);
+  }
+  if (options.file !== undefined && result.source) {
+    result.source = {...result.source, file: options.file};
   }
   return result;
 };
@@ -69,7 +72,7 @@ const compileProgramInternal = (strings, values, options) => {
   const tokens = tokenize(strings);
   const cursor = makeCursor(tokens, values);
   const opTable = buildOpTable(options);
-  const ir = parseProgram(cursor, opTable);
+  const ir = parseProgram(cursor, opTable, options.file, !!options.sourceMap);
   if (options.lower === false) return ir;
   const lowered = lowerRules(Object.values(ir));
   Object.defineProperty(lowered, IR, {value: ir, enumerable: false});

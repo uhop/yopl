@@ -149,6 +149,24 @@ export declare const Js: (factory: JsFactory) => JsGoal;
 // Clause and Rule
 
 /**
+ * Source position of a clause in its originating tagged-template or
+ * source file. Front-ends populate `line` / `col` from the lexer's
+ * position tracker (1-based, counted from the start of the source);
+ * `file` is supplied by the caller via the `prolog` configurator's
+ * `file` option (and is absent when no file context is available).
+ *
+ * Positions point at the first token of the clause head.
+ */
+export interface ClauseSource {
+  /** Optional file path / URL of the originating source. */
+  file?: string;
+  /** 1-based line number of the clause head. */
+  line: number;
+  /** 1-based column number of the clause head. */
+  col: number;
+}
+
+/**
  * One clause of a rule.
  *
  * - `head`: head args; `head.length` must equal `Rule.arity`.
@@ -156,11 +174,15 @@ export declare const Js: (factory: JsFactory) => JsGoal;
  * - `vars`: optional declared user-var names in declaration order.
  *   Front-ends supply this when vars appear only inside a `JsGoal`'s
  *   factory body (closures the IR walker can't see).
+ * - `source`: optional originating source position. Both front-ends
+ *   populate this; absent on programmatically-built clauses unless
+ *   the caller supplies it.
  */
 export interface Clause {
   head: Term[];
   body: Goal[];
   vars?: string[];
+  source?: ClauseSource;
 }
 
 /** A rule: name + arity + one or more clauses. */
@@ -171,7 +193,7 @@ export interface Rule {
 }
 
 /** Build a clause IR node. */
-export declare const Clause: (head: Term[], body?: Goal[], vars?: string[]) => Clause;
+export declare const Clause: (head: Term[], body?: Goal[], vars?: string[], source?: ClauseSource) => Clause;
 
 /** Build a rule IR node. */
 export declare const Rule: (name: string, arity: number, clauses: Clause[]) => Rule;

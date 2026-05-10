@@ -24,6 +24,12 @@ import {submit, TEST} from './harness.js';
 // (`Js({factory: fn})`). Walks plain objects and arrays element-wise;
 // for a `js` IR node, checks that `factory` is the same function
 // reference (`===`); other fields recurse normally.
+// Filter out lexer-position metadata before structural comparison —
+// `source` is a parser annotation, not part of the IR-equivalence
+// contract this dogfood asserts. (Source-position handling is covered
+// in test-source-map.js.)
+const KEEP_KEY = k => k !== 'source';
+
 const deepEqualIR = (a, b) => {
   if (a === b) return true;
   if (a === null || b === null) return a === b;
@@ -37,8 +43,8 @@ const deepEqualIR = (a, b) => {
   if (a.kind === 'js' || b.kind === 'js') {
     return a.kind === 'js' && b.kind === 'js' && a.factory === b.factory;
   }
-  const keysA = Object.keys(a);
-  const keysB = Object.keys(b);
+  const keysA = Object.keys(a).filter(KEEP_KEY);
+  const keysB = Object.keys(b).filter(KEEP_KEY);
   if (keysA.length !== keysB.length) return false;
   for (const k of keysA) {
     if (!Object.prototype.hasOwnProperty.call(b, k)) return false;

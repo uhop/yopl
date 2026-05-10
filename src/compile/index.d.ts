@@ -34,7 +34,8 @@ export {
   type JsGoal,
   type Goal,
   type JsVars,
-  type JsFactory
+  type JsFactory,
+  type ClauseSource
 } from './ir.js';
 
 export {lowerRule, lowerRules} from './lower.js';

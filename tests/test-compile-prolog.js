@@ -20,7 +20,22 @@ const parse = (src, opTable = defaultBodyOpTable(), values = []) => {
   return result;
 };
 
-const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+// Strip the `source` metadata field before comparing — it's a lexer-
+// position annotation added by the parser, not part of the IR-shape
+// contract the parser tests assert on. Source-position behavior is
+// covered separately in test-source-map.js.
+const stripSource = obj => {
+  if (obj === null || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(stripSource);
+  const out = {};
+  for (const k of Object.keys(obj)) {
+    if (k === 'source') continue;
+    out[k] = stripSource(obj[k]);
+  }
+  return out;
+};
+
+const eq = (a, b) => JSON.stringify(stripSource(a)) === JSON.stringify(stripSource(b));
 
 export default [
   function test_clause_fact_with_args() {

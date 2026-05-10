@@ -85,14 +85,44 @@ unified, deep6 handles the binding.
 ### Clause and Rule
 
 ```
-Clause { head: Term[], body: Goal[], vars?: string[] }
-Rule   { name: string, arity: number, clauses: Clause[] }
+ClauseSource { file?: string, line: number, col: number }
+Clause       { head: Term[], body: Goal[], vars?: string[], source?: ClauseSource }
+Rule         { name: string, arity: number, clauses: Clause[] }
 ```
 
 `Rule.arity` must equal `clause.head.length` for every clause. The
 validator enforces this; this is the single largest static-error class
 the compiler exists to catch (the 2026-05-08 bug cluster was 5 instances
 of arity drift).
+
+`Clause.source` is an optional 1-based source position pointing at the
+first token of the clause head. Population is opt-in via the
+`sourceMap: boolean` configurator on `prolog` / `prologClause`
+(default `false`); when on, both front-ends populate it from the
+lexer's position tracker. The `prolog` configurator also accepts a
+`file` option (silently ignored when `sourceMap` is off) that flows
+through to `source.file`; `prologFile` / `prologFileAsync` default
+`file` to the URL when source maps are on.
+
+The per-clause `clause\`...\``front-end always carries source — each
+tag is one clause, so the cost is negligible. Programmatically-built
+clauses (via`Clause(...)`) omit `source` unless the caller supplies
+one explicitly.
+
+Lowering attaches `source` to each lowered runtime fn as a
+non-enumerable property when the clause carries one — error reporters
+can introspect it without disturbing JSON serialization of the rules
+dict. Validator issues emitted against a clause that has `source`
+carry it on the `Issue` object and append a `[file:line:col]` suffix
+to the issue's human-readable `message`.
+
+**Why opt-in?** Source positions add ~50 bytes per clause permanent
+memory. For a 50-clause library that's ~2.8 KB; for a 5000-clause
+program ~280 KB. Production deployments that don't surface source
+positions in errors skip the cost by leaving `sourceMap` off; debug
+builds flip it on. The lexer's per-token tracking stays always-on
+because the cost is transient (GC'd after parse) and gating it
+would complicate the lexer surface for a marginal saving.
 
 ## Decisions
 

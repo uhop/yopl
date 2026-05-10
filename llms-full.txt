@@ -143,6 +143,31 @@ Body-context features beyond `clause\`...\``:
 The two front-ends emit identical IR for the shared subset; the `prolog` form additionally
 covers the body-operator and atom-syntax features above.
 
+### Source-map support
+
+`Clause` IR carries an optional `source: {file?, line, col}` field. Population is controlled
+by the `sourceMap: boolean` configurator option on `prolog` / `prologClause`:
+
+- **Default `false`** — no source attached to clauses; lowered fns and validator issues also
+  lack source info. Saves ~50 bytes per clause (~2.8 KB for a 50-clause library, ~280 KB for
+  5000 clauses) — production deployments that don't read source positions skip the cost.
+- **`true`** — both front-ends populate `Clause.source` from the lexer's position tracker
+  (1-based, counted from the start of the source). The `prolog` configurator's `file` option
+  (silently ignored when `sourceMap` is off) populates `source.file`; `prologFile` /
+  `prologFileAsync` default `file` to the URL when `sourceMap` is enabled.
+
+The per-clause `clause\`...\`` front-end always carries source — each tag is one clause, so
+the cost is negligible (dozens of bytes total across realistic usage). Programmatically-built
+clauses (via `Clause(...)` directly) omit `source` unless the caller supplies one.
+
+When `Clause.source` is present, the lowered runtime fn carries it as a non-enumerable
+property so error reporters can attribute proof-time failures back to the originating clause.
+Validator issues emitted against a clause with a `source` carry it on the `Issue` object and
+append a `[file:line:col]` suffix to the issue's `message` for human-readable output.
+
+Lexer position tracking is always on (transient memory, GC'd after parse) — gating it would
+complicate the API for a marginal saving.
+
 ### `yopl/compile/lower.js`
 
 `lowerRules(rules)` and `lowerRule(rule)` produce the runtime rule dict. Each clause is

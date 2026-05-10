@@ -22,5 +22,14 @@ import {readFileSync} from 'node:fs';
 import {readFile} from 'node:fs/promises';
 import {prolog} from './index.js';
 
-export const prologFile = (url, options) => prolog(readFileSync(url, 'utf8'), options);
-export const prologFileAsync = async (url, options) => prolog(await readFile(url, 'utf8'), options);
+// Default `options.file` to the URL/path so clause source positions
+// carry it through to validation issues and runtime error messages.
+// Caller can still override by setting `options.file` explicitly.
+const withFileDefault = (url, options) => {
+  if (options && options.file !== undefined) return options;
+  const file = url instanceof URL ? url.href : String(url);
+  return options ? {...options, file} : {file};
+};
+
+export const prologFile = (url, options) => prolog(readFileSync(url, 'utf8'), withFileDefault(url, options));
+export const prologFileAsync = async (url, options) => prolog(await readFile(url, 'utf8'), withFileDefault(url, options));

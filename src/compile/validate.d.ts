@@ -1,6 +1,6 @@
 // Type definitions for yopl — IR validation pass.
 
-import type {Rule} from './ir.js';
+import type {Rule, ClauseSource} from './ir.js';
 
 /** Discriminator for validation issues. */
 export type IssueKind = 'duplicate-rule' | 'arity-mismatch' | 'call-arity-mismatch' | 'undeclared-var' | 'unresolved-rule';
@@ -17,6 +17,13 @@ export interface Issue {
   var?: string;
   /** For `call-arity-mismatch` / `unresolved-rule`: the called rule name. */
   target?: string;
+  /**
+   * Source position of the offending clause, when the front-end
+   * threaded one in. Per-clause issues carry this; cross-rule issues
+   * (e.g. `duplicate-rule`) don't. The `message` field also gets a
+   * `[file:line:col]` suffix for human-readable output.
+   */
+  source?: ClauseSource;
 }
 
 /** Options controlling which checks run. */

@@ -14,6 +14,24 @@ import {IR_KINDS} from './ir.js';
 
 const issue = (kind, message, where) => ({kind, message, ...where});
 
+// Suffix `message` with a `[file:line:col]` (or `[line:col]`) tag when
+// the clause has source-position metadata. Keeps the issue's `source`
+// field as the structured form for tooling, while making the human-
+// readable `message` immediately useful in test output / CLI dumps.
+const sourceTag = src => {
+  if (!src) return '';
+  const head = src.file !== undefined ? `${src.file}:` : '';
+  return ` [${head}${src.line}:${src.col}]`;
+};
+
+const clauseIssue = (kind, message, rule, clauseIdx, extra) => {
+  const clause = rule.clauses[clauseIdx];
+  const src = clause && clause.source;
+  const out = {kind, message: message + sourceTag(src), rule: rule.name, clause: clauseIdx, ...extra};
+  if (src !== undefined) out.source = src;
+  return out;
+};
+
 const referencedVars = clause => {
   const refs = new Set();
   const visited = new WeakSet();
@@ -81,10 +99,7 @@ export const validate = (rules, options = {}) => {
     rule.clauses.forEach((clause, idx) => {
       if (clause.head.length !== rule.arity) {
         issues.push(
-          issue('arity-mismatch', `rule '${rule.name}' has arity ${rule.arity} but clause ${idx} head has ${clause.head.length} args`, {
-            rule: rule.name,
-            clause: idx
-          })
+          clauseIssue('arity-mismatch', `rule '${rule.name}' has arity ${rule.arity} but clause ${idx} head has ${clause.head.length} args`, rule, idx)
         );
       }
 
@@ -93,9 +108,7 @@ export const validate = (rules, options = {}) => {
         const declared = new Set(clause.vars);
         for (const name of refs) {
           if (!declared.has(name)) {
-            issues.push(
-              issue('undeclared-var', `rule '${rule.name}' clause ${idx} references undeclared var '${name}'`, {rule: rule.name, clause: idx, var: name})
-            );
+            issues.push(clauseIssue('undeclared-var', `rule '${rule.name}' clause ${idx} references undeclared var '${name}'`, rule, idx, {var: name}));
           }
         }
       }
@@ -106,17 +119,17 @@ export const validate = (rules, options = {}) => {
         if (target) {
           if (target.arity !== goal.args.length) {
             issues.push(
-              issue(
+              clauseIssue(
                 'call-arity-mismatch',
                 `rule '${rule.name}' clause ${idx} calls '${goal.name}' with ${goal.args.length} args but '${goal.name}' has arity ${target.arity}`,
-                {rule: rule.name, clause: idx, target: goal.name}
+                rule,
+                idx,
+                {target: goal.name}
               )
             );
           }
         } else if (options.checkRuleReferences && !knownExternals.has(goal.name)) {
-          issues.push(
-            issue('unresolved-rule', `rule '${rule.name}' clause ${idx} calls unknown rule '${goal.name}'`, {rule: rule.name, clause: idx, target: goal.name})
-          );
+          issues.push(clauseIssue('unresolved-rule', `rule '${rule.name}' clause ${idx} calls unknown rule '${goal.name}'`, rule, idx, {target: goal.name}));
         }
       }
     });

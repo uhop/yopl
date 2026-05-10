@@ -94,6 +94,15 @@ bound. Maps, Sets, Dates, and `Wrap`-wrapped values (`open`/`soft`) pass through
 `yopl/compile` re-exports `open`, `soft`, `_`, and `any` from `deep6` for fine-grained match
 control on `Lit`-wrapped values. See `dev-docs/compiler-ir.md` for the full design.
 
+**Source-map support.** Opt-in via `prolog` / `prologClause`'s `sourceMap: boolean`
+configurator (default `false`) so production deployments skip the per-clause memory cost.
+When on, both front-ends thread lexer line/col through to each Clause IR's optional
+`source: {file?, line, col}` field; the `file` option (and `prologFile` / `prologFileAsync`
+defaulting to the URL) populates `source.file`. Lowered fns carry `source` as a
+non-enumerable property; validator issues for per-clause errors carry `source` on the `Issue`
+and tag the human-readable `message` with `[file:line:col]`. The per-clause `clause\`...\``
+front-end carries source unconditionally (each tag is one clause; cost is negligible).
+
 ### Built-in rules
 
 `src/rules/` provides a small standard library of predicates, split by domain:

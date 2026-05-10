@@ -41,13 +41,15 @@ import {parseBody} from '../parse/goal.js';
 
 const parseClauseTokens = (tokens, values) => {
   const cursor = makeCursor(tokens, values);
+  const headStart = cursor.peek();
   cursor.eat('lparen');
   const head = parseArgs(cursor);
   cursor.eat('rparen');
   let body = [];
   if (cursor.accept('colondash')) body = parseBody(cursor);
   cursor.eat('eof');
-  return IRClause(head, body);
+  const source = {line: headStart.line, col: headStart.col};
+  return IRClause(head, body, undefined, source);
 };
 
 export const clause = (strings, ...values) => parseClauseTokens(tokenize(strings), values);
