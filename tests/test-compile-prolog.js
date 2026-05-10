@@ -455,19 +455,26 @@ export default [
     eval(TEST('eq(r.body[2], Call("ok", [Var("X")]))'));
   },
   function test_body_op_unification_as_call() {
-    // `X = Y` in body: comp '=' is in term op table at 700 xfx; goalize
-    // sees Compound('=', [X, Y]) and converts to Call('=', [X, Y]).
-    const r = prologClause`eq(X, Y) :- X = Y`;
-    eval(TEST('eq(r.body, [Call("=", [Var("X"), Var("Y")])])'));
+    // `X = Y` in body: parsed as Compound('=', [X, Y]); goalize applies
+    // GOAL_ALIASES to map `=` → `eq` (yopl's runtime predicate).
+    const r = prologClause`unify(X, Y) :- X = Y`;
+    eval(TEST('eq(r.body, [Call("eq", [Var("X"), Var("Y")])])'));
   },
-  function test_body_op_disjunction_throws() {
-    let threw = false;
-    try {
-      prologClause`pick(X) :- a(X) ; b(X)`;
-    } catch (e) {
-      threw = true;
-    }
-    eval(TEST('threw'));
+  function test_body_op_disjunction_transforms_to_helper() {
+    // (a(X) ; b(X)) → Call('$or_<N>', [X]) + helper rule with two clauses.
+    const r = prologClause`pick(X) :- a(X) ; b(X)`;
+    eval(TEST('r.body.length === 1'));
+    eval(TEST('r.body[0].kind === "call"'));
+    eval(TEST('r.body[0].name.startsWith("$or_")'));
+    eval(TEST('eq(r.body[0].args, [Var("X")])'));
+    eval(TEST('r.helpers !== undefined'));
+    eval(TEST('r.helpers.length === 1'));
+    const helper = r.helpers[0];
+    eval(TEST('helper.name === r.body[0].name'));
+    eval(TEST('helper.arity === 1'));
+    eval(TEST('helper.clauses.length === 2'));
+    eval(TEST('eq(helper.clauses[0].body, [Call("a", [Var("X")])])'));
+    eval(TEST('eq(helper.clauses[1].body, [Call("b", [Var("X")])])'));
   },
   function test_body_op_if_then_throws() {
     let threw = false;
@@ -507,5 +514,88 @@ export default [
     `;
     const ir = r[IR];
     eval(TEST('eq(ir.same.clauses[0].body, [Call("eq", [Var("X"), Var("Y")])])'));
+  },
+
+  // -------------------------------------------------------------------------
+  // disjunction (`;`) — `$or_<N>` helper-rule transformation
+  function test_disjunction_three_branches_flatten() {
+    // a ; b ; c → three-clause helper.
+    const r = prologClause`pick(X) :- a(X) ; b(X) ; c(X)`;
+    eval(TEST('r.helpers.length === 1'));
+    eval(TEST('r.helpers[0].clauses.length === 3'));
+    eval(TEST('eq(r.helpers[0].clauses[0].body, [Call("a", [Var("X")])])'));
+    eval(TEST('eq(r.helpers[0].clauses[1].body, [Call("b", [Var("X")])])'));
+    eval(TEST('eq(r.helpers[0].clauses[2].body, [Call("c", [Var("X")])])'));
+  },
+  function test_disjunction_captures_disjunction_vars() {
+    // Captured = vars(disjunction) ∩ vars(head + body) — and since the
+    // body INCLUDES the disjunction, this resolves to all vars used in
+    // any branch. Y is captured here even though it's only used inside
+    // the disjunction (over-capture is a perf concern, not correctness).
+    const r = prologClause`p(X) :- (foo(X, Y) ; bar(X, Y))`;
+    eval(TEST('r.body[0].args.length === 2'));
+    eval(TEST('r.helpers[0].arity === 2'));
+    eval(TEST('r.helpers[0].clauses[0].head.length === 2'));
+  },
+  function test_disjunction_captures_var_used_after() {
+    // Y is fresh but used after the disjunction → captured (must propagate).
+    const r = prologClause`p(X) :- (Y = 1 ; Y = 2), foo(X, Y)`;
+    // Body: [Call('$or_<N>', [Var('Y')]), Call('=', wait, Y appears in foo too. Actually Y appears in head? No. Y is only in body.
+    // clauseVars = {X (from head), Y (from body — both disjunction and foo)}
+    // disjunctionVars = {Y}
+    // captured = {Y}
+    eval(TEST('r.body[0].args.length === 1'));
+    eval(TEST('eq(r.body[0].args[0], Var("Y"))'));
+    eval(TEST('r.helpers[0].arity === 1'));
+  },
+  function test_disjunction_with_conjunction_in_branch() {
+    // (a, b ; c) → branch 1 = [a, b], branch 2 = [c]
+    const r = prologClause`p(X) :- (a(X), b(X) ; c(X))`;
+    eval(TEST('r.helpers.length === 1'));
+    eval(TEST('r.helpers[0].clauses.length === 2'));
+    eval(TEST('r.helpers[0].clauses[0].body.length === 2'));
+    eval(TEST('r.helpers[0].clauses[1].body.length === 1'));
+  },
+  function test_disjunction_nested() {
+    // a ; (b ; c) → flattens via right-recursive flatten to [a, b, c]
+    const r = prologClause`p(X) :- a(X) ; (b(X) ; c(X))`;
+    // Should be a single helper with 3 branches.
+    eval(TEST('r.helpers.length === 1'));
+    eval(TEST('r.helpers[0].clauses.length === 3'));
+  },
+  function test_disjunction_in_program_adds_helper_to_rules_dict() {
+    // parseProgram should expose the helper in the returned dict.
+    const r = prolog`pick(X) :- a(X) ; b(X). a(1). a(2). b(3).`;
+    const ir = r[IR];
+    eval(TEST('Object.keys(ir).some(n => n.startsWith("$or_"))'));
+    eval(TEST('ir.pick !== undefined'));
+    eval(TEST('ir.a !== undefined'));
+    eval(TEST('ir.b !== undefined'));
+  },
+  function test_disjunction_end_to_end_solve() {
+    // pick(X) :- color(X) ; flavor(X). lowers + runs correctly.
+    const userRules = prolog`
+      color(red).
+      color(green).
+      flavor(sweet).
+      flavor(sour).
+      pick(X) :- color(X) ; flavor(X).
+    `;
+    const rules = {...systemRules, ...userRules};
+    const out = [];
+    const X = v('X');
+    solve(rules, 'pick', [X], env => out.push(assemble(X, env)));
+    eval(TEST('unify(out, ["red", "green", "sweet", "sour"])'));
+  },
+  function test_disjunction_propagates_binding_after() {
+    // Disjunction binds Y; Y is used after.
+    const userRules = prolog`
+      pick(Y, Z) :- (Y = 1 ; Y = 2), eq(Y, Z).
+    `;
+    const rules = {...systemRules, ...userRules};
+    const out = [];
+    const Z = v('Z');
+    solve(rules, 'pick', [v('_'), Z], env => out.push(assemble(Z, env)));
+    eval(TEST('unify(out, [1, 2])'));
   }
 ];

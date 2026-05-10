@@ -77,13 +77,15 @@ const parseDirective = (cursor, opTable) => {
 export const parseProgram = (cursor, opTable) => {
   const localTable = cloneOpTable(opTable);
   const groups = new Map();
+  const helperRules = [];
 
   while (cursor.peek().kind !== 'eof') {
     if (cursor.accept('colondash')) {
       parseDirective(cursor, localTable);
       continue;
     }
-    const {name, head, body} = parseClause(cursor, localTable);
+    const parsed = parseClause(cursor, localTable);
+    const {name, head, body} = parsed;
     const arity = head.length;
     let group = groups.get(name);
     if (group === undefined) {
@@ -93,11 +95,15 @@ export const parseProgram = (cursor, opTable) => {
       throw new Error(`arity mismatch for '${name}': previously ${group.arity}, now ${arity}`);
     }
     group.clauses.push(IRClause(head, body));
+    if (parsed.helpers) helperRules.push(...parsed.helpers);
   }
 
   const rules = {};
   for (const [name, {arity, clauses}] of groups) {
     rules[name] = IRRule(name, arity, clauses);
+  }
+  for (const helper of helperRules) {
+    rules[helper.name] = helper;
   }
   return rules;
 };

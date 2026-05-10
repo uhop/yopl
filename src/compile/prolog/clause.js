@@ -28,7 +28,7 @@ import {Var, Call, Cut, Fail} from '../ir.js';
 import {wrapGoalInterp} from '../parse/interp.js';
 import {isVarStart} from '../parse/util.js';
 import {parseExpr} from '../parse/expr.js';
-import {parseBodyExpr, goalize} from '../parse/body-expr.js';
+import {parseBodyExpr, transformBody} from '../parse/body-expr.js';
 
 const ARG_PRIO = 999;
 
@@ -111,10 +111,13 @@ export const parseGoals = (cursor, opTable) => {
 export const parseClause = (cursor, opTable) => {
   const {name, args: head} = parseHead(cursor, opTable);
   let body = [];
+  let helpers = [];
   if (cursor.accept('colondash')) {
     const bodyTerm = parseBodyExpr(cursor, opTable);
-    body = goalize(bodyTerm);
+    ({body, helpers} = transformBody(head, bodyTerm));
   }
   cursor.eat('period');
-  return {name, head, body};
+  const result = {name, head, body};
+  if (helpers.length > 0) result.helpers = helpers;
+  return result;
 };
