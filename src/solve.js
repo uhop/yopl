@@ -21,6 +21,13 @@ const prove = (rules, goals, env) => {
         env.pop();
         continue main;
       }
+      // Restore the outer goals' index to the post-call position so
+      // walking up from a re-succeeded match resumes at the correct
+      // next body goal. Downstream proof attempts mutate goals.index
+      // forward; on backtracking back to retry alternative rules
+      // here, that mutation must be undone or subsequent body goals
+      // get silently skipped.
+      frame.goals.index = frame.restoreIndex;
       while (frame.index < frame.ruleList.length) {
         const rule = frame.ruleList[frame.index++],
           vars = generateVariables(rule.length + 1),
@@ -60,7 +67,7 @@ const prove = (rules, goals, env) => {
     let ruleList = rules[goal.name];
     if (ruleList === null) continue main;
     if (!Array.isArray(ruleList)) ruleList = [ruleList];
-    stack.push({command: 2, ruleList, index: 0, goals, args: goal.args || NO_ARGS});
+    stack.push({command: 2, ruleList, index: 0, goals, args: goal.args || NO_ARGS, restoreIndex: goals.index});
   }
 };
 

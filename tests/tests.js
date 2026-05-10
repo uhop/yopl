@@ -10,6 +10,7 @@ import rulesTests from './test-rules.js';
 import compileTests from './test-compile.js';
 import compileExprTests from './test-compile-expr.js';
 import compilePrologTests from './test-compile-prolog.js';
+import solveBacktrackTests from './test-solve-backtrack.js';
 
 runAllTests([
   ...solveTests,
@@ -21,5 +22,6 @@ runAllTests([
   ...rulesTests,
   ...compileTests,
   ...compileExprTests,
-  ...compilePrologTests
+  ...compilePrologTests,
+  ...solveBacktrackTests
 ]);
