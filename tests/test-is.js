@@ -114,5 +114,36 @@ export default [
   function test_is_verify_mismatch_fails() {
     const {count} = callOne('forward', [3, 4, 8]);
     eval(TEST('count === 0'));
+  },
+  function test_aritheq_match() {
+    const r = prolog`q :- 2 + 2 =:= 4.`;
+    let count = 0;
+    solve({...systemRules, ...mathRules, ...r}, 'q', [], () => ++count);
+    eval(TEST('count === 1'));
+  },
+  function test_aritheq_mismatch() {
+    const r = prolog`q :- 2 + 2 =:= 5.`;
+    let count = 0;
+    solve({...systemRules, ...mathRules, ...r}, 'q', [], () => ++count);
+    eval(TEST('count === 0'));
+  },
+  function test_arithneq_match() {
+    const r = prolog`q :- 2 + 2 =\\= 5.`;
+    let count = 0;
+    solve({...systemRules, ...mathRules, ...r}, 'q', [], () => ++count);
+    eval(TEST('count === 1'));
+  },
+  function test_arithneq_mismatch() {
+    const r = prolog`q :- 2 + 2 =\\= 4.`;
+    let count = 0;
+    solve({...systemRules, ...mathRules, ...r}, 'q', [], () => ++count);
+    eval(TEST('count === 0'));
+  },
+  function test_aritheq_distinguishes_from_unification_eq() {
+    // Plain '=' (unification) cannot evaluate; '=:=' must.
+    const r = prolog`q :- X = 7, X =:= 3 + 4.`;
+    let count = 0;
+    solve({...systemRules, ...mathRules, ...r}, 'q', [], () => ++count);
+    eval(TEST('count === 1'));
   }
 ];
