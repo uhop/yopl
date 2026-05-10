@@ -53,10 +53,13 @@ const TERM_DEFAULTS = [
   {name: '>=', priority: 700, type: 'xfx'},
   {name: '=:=', priority: 700, type: 'xfx'},
   {name: '=\\=', priority: 700, type: 'xfx'},
+  {name: 'is', priority: 700, type: 'xfx'},
   {name: '+', priority: 500, type: 'yfx'},
   {name: '-', priority: 500, type: 'yfx'},
   {name: '*', priority: 400, type: 'yfx'},
   {name: '/', priority: 400, type: 'yfx'},
+  {name: '//', priority: 400, type: 'yfx'},
+  {name: 'mod', priority: 400, type: 'yfx'},
   {name: '-', priority: 200, type: 'fy'},
   {name: '+', priority: 200, type: 'fy'}
 ];

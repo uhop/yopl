@@ -4,6 +4,53 @@ import {lowerRules} from '../compile/lower.js';
 import {rule, clause} from '../compile/clause/index.js';
 import {cut} from './system.js';
 
+// `is/2` arithmetic-expression evaluator. Walks the RHS term tree,
+// dereferencing Variable instances and dispatching compound nodes to
+// numeric ops. Mirrors ISO Prolog's evaluation rules for the operators
+// yopl exposes in the term op table (`+`, `-`, `*`, `/`, `//`, `mod`,
+// unary `+`/`-`); plus a few common numeric functions usable in
+// canonical-functor form (e.g. `X is abs(Y)`).
+const ARITH_BINARY = {
+  '+': (a, b) => a + b,
+  '-': (a, b) => a - b,
+  '*': (a, b) => a * b,
+  '/': (a, b) => a / b,
+  '//': (a, b) => Math.trunc(a / b),
+  mod: (a, b) => ((a % b) + b) % b,
+  min: Math.min,
+  max: Math.max
+};
+
+const ARITH_UNARY = {
+  '+': a => +a,
+  '-': a => -a,
+  abs: Math.abs,
+  sqrt: Math.sqrt,
+  floor: Math.floor,
+  ceiling: Math.ceil,
+  round: Math.round,
+  sign: Math.sign
+};
+
+const evalExpr = (term, env) => {
+  if (term && typeof term.isBound === 'function') {
+    if (!term.isBound(env)) throw new Error('is/2: argument not sufficiently instantiated');
+    return evalExpr(term.get(env), env);
+  }
+  if (typeof term === 'number') return term;
+  if (term && typeof term.name === 'string' && Array.isArray(term.args)) {
+    if (term.args.length === 2) {
+      const fn = ARITH_BINARY[term.name];
+      if (fn) return fn(evalExpr(term.args[0], env), evalExpr(term.args[1], env));
+    } else if (term.args.length === 1) {
+      const fn = ARITH_UNARY[term.name];
+      if (fn) return fn(evalExpr(term.args[0], env));
+    }
+    throw new Error(`is/2: unknown arithmetic ${term.name}/${term.args.length}`);
+  }
+  throw new Error('is/2: cannot evaluate non-arithmetic term');
+};
+
 // Shared factory for fully-reversible binary arithmetic predicates
 // (add, sub, mul, div). Caller supplies four numeric ops:
 //   verify(x, y, z)  → boolean (all-bound consistency check)
@@ -104,5 +151,12 @@ export const rules = lowerRules([
     clause`(X, X, 1)`,
     clause`(X, 1, X)`
   ),
-  rule('neg', 2)(clause`(X, Y) :- ${negReversible}`, clause`(0, 0)`)
+  rule('neg', 2)(clause`(X, Y) :- ${negReversible}`, clause`(0, 0)`),
+  rule('is', 2)(clause`(X, E) :- ${({X, E}) => env => {
+    const value = evalExpr(E, env);
+    if (typeof value !== 'number') return false;
+    if (X.isBound(env)) return X.get(env) === value;
+    env.bindVal(X.name, value);
+    return true;
+  }}`)
 ]);
