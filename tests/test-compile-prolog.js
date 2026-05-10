@@ -3,6 +3,7 @@ import {tokenize} from '../src/compile/parse/lexer.js';
 import {makeCursor} from '../src/compile/parse/cursor.js';
 import {defaultTermOpTable} from '../src/compile/parse/op-table.js';
 import {parseClause, parseGoal, parseGoals} from '../src/compile/prolog/clause.js';
+import {prologClause} from '../src/compile/prolog/index.js';
 import {submit, TEST} from './harness.js';
 
 const parse = (src, opTable = defaultTermOpTable(), values = []) => {
@@ -124,5 +125,60 @@ export default [
     // Allow `'='/2` style head — sym name with args.
     const r = parse('=(X, X).');
     eval(TEST('eq(r, {name: "=", head: [Var("X"), Var("X")], body: []})'));
+  },
+
+  // -------------------------------------------------------------------------
+  // prologClause tagged-template wrapper
+  function test_prolog_clause_tag_no_trailing_dot() {
+    const r = prologClause`foo(X, Y)`;
+    eval(TEST('eq(r, {name: "foo", head: [Var("X"), Var("Y")], body: []})'));
+  },
+  function test_prolog_clause_tag_with_trailing_dot() {
+    const r = prologClause`foo(X, Y).`;
+    eval(TEST('eq(r, {name: "foo", head: [Var("X"), Var("Y")], body: []})'));
+  },
+  function test_prolog_clause_tag_rule() {
+    const r = prologClause`member(X, [_ | T]) :- member(X, T)`;
+    eval(TEST('r.name === "member"'));
+    eval(TEST('eq(r.body, [Call("member", [Var("X"), Var("T")])])'));
+  },
+  function test_prolog_clause_tag_with_interp_term() {
+    const seven = 7;
+    const r = prologClause`pos(${seven})`;
+    eval(TEST('eq(r, {name: "pos", head: [Lit(7)], body: []})'));
+  },
+  function test_prolog_clause_tag_with_interp_goal() {
+    const guard =
+      ({X}) =>
+      env =>
+        true;
+    const r = prologClause`check(X) :- ${guard}`;
+    eval(TEST('eq(r.body, [Js(guard)])'));
+  },
+  function test_prolog_clause_tag_with_operator_in_args() {
+    const r = prologClause`q(X, Y) :- eq(Y, X + 1)`;
+    eval(TEST('eq(r.body, [Call("eq", [Var("Y"), Compound("+", [Var("X"), Lit(1)])])])'));
+  },
+  function test_prolog_clause_tag_rejects_two_clauses() {
+    let threw = false;
+    try {
+      prologClause`foo. bar.`;
+    } catch (e) {
+      threw = true;
+    }
+    eval(TEST('threw'));
+  },
+  function test_prolog_clause_tag_rejects_uppercase_head() {
+    let threw = false;
+    try {
+      prologClause`Foo(X)`;
+    } catch (e) {
+      threw = true;
+    }
+    eval(TEST('threw'));
+  },
+  function test_prolog_clause_tag_with_trailing_whitespace() {
+    const r = prologClause`green.   `;
+    eval(TEST('eq(r, {name: "green", head: [], body: []})'));
   }
 ];
