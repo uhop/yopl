@@ -12,7 +12,7 @@
 // walk rationale.
 
 import {_} from 'deep6/env.js';
-import {call as runtimeCall, cut as runtimeCut, fail as runtimeFail} from '../rules/system.js';
+import {call as runtimeCall, cut as runtimeCut, fail as runtimeFail} from '../rules/system-runtime.js';
 import {collectVars, IR_KINDS} from './ir.js';
 
 // Walk a `Lit` value per activation, substituting any nested IR node
