@@ -17,6 +17,19 @@
 // shape when arity matches; arity-1 prefix and arity-1 functor produce
 // identical IR.
 //
+// Operator-vs-atom: a sym followed by a token that cannot start a
+// primary (`,`, `)`, `]`, `|`, `.`, `;`, `:-`, eof) is treated as a
+// bare string atom (`Lit(name)`) rather than a prefix operator —
+// otherwise `op(700, fy, -)` would try to treat `-` as unary minus
+// applied to the closing paren. Users who want a prefix op application
+// to a sym-named operand can either parenthesize the operand or use
+// the canonical functor form.
+//
+// `op/4` aliasing: when an operator entry has a `target` field, the
+// emitted compound uses `target` as the functor name instead of the
+// source-level op name. So `:- op(700, xfx, =>, eq).` followed by
+// `X => Y` in arg position emits `Compound('eq', [X, Y])` directly.
+//
 // List elements and compound args are parsed at maxPrio = 999 so the
 // `,` token always behaves as a structural separator inside `[...]`
 // and `(...)`, never as a comma-conjunction operator (priority 1000
@@ -37,6 +50,8 @@ import {isVarStart} from './util.js';
 const ARG_PRIO = 999;
 const TOP_PRIO = 1200;
 
+const NON_PRIMARY_KINDS = new Set(['comma', 'rparen', 'rbracket', 'pipe', 'period', 'semicolon', 'colondash', 'eof']);
+
 const opNameOf = tok => (tok.kind === 'sym' || tok.kind === 'ident' ? tok.value : null);
 
 export const parseExpr = (cursor, opTable, maxPrio = TOP_PRIO) => {
@@ -44,15 +59,17 @@ export const parseExpr = (cursor, opTable, maxPrio = TOP_PRIO) => {
   let lhsPrio;
 
   const t = cursor.peek();
-  const lookaheadIsLparen = cursor.peekAt(1)?.kind === 'lparen';
+  const next = cursor.peekAt(1);
+  const lookaheadIsLparen = next?.kind === 'lparen';
+  const nextCanStartPrimary = next && !NON_PRIMARY_KINDS.has(next.kind);
 
-  if (t.kind === 'sym' && !lookaheadIsLparen) {
+  if (t.kind === 'sym' && !lookaheadIsLparen && nextCanStartPrimary) {
     const op = opTable.prefix.get(t.value);
     if (op && op.priority <= maxPrio) {
       cursor.advance();
       const childMax = op.type === 'fy' ? op.priority : op.priority - 1;
       const operand = parseExpr(cursor, opTable, childMax);
-      lhs = Compound(op.name, [operand]);
+      lhs = Compound(op.target ?? op.name, [operand]);
       lhsPrio = op.priority;
     } else {
       lhs = parsePrimary(cursor, opTable);
@@ -74,7 +91,7 @@ export const parseExpr = (cursor, opTable, maxPrio = TOP_PRIO) => {
     const rightMax = op.type === 'xfy' ? op.priority : op.priority - 1;
     cursor.advance();
     const rhs = parseExpr(cursor, opTable, rightMax);
-    lhs = Compound(op.name, [lhs, rhs]);
+    lhs = Compound(op.target ?? op.name, [lhs, rhs]);
     lhsPrio = op.priority;
   }
 
@@ -125,7 +142,7 @@ const parsePrimary = (cursor, opTable) => {
       cursor.eat('rparen');
       return Compound(name, args);
     }
-    throw new Error(`unexpected operator '${name}' in primary position`);
+    return Lit(name);
   }
   throw new Error(`unexpected token ${t.kind} in expression`);
 };
