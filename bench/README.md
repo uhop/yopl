@@ -30,20 +30,50 @@ Common options: `--ms` (measurement time per variant), `--samples`,
 
 ## Current targets
 
-| File                    | Compares                                              | Notes                                                                                                 |
-| ----------------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `bench-proof-loop.js`   | member contains-last / enumerate-all / append-split   | Core solver workload — head unification, choice-point allocation, recursive descent.                  |
-| `bench-drivers.js`      | sync callback / sync gen / async callback / async gen | Take-1 over `member` — surfaces driver overhead vs the proof loop.                                    |
-| `bench-inline-goals.js` | math.add forward / reverse / verify                   | Reversible-operator path — `isBound` probe + `bindVal` + `cut(sys)` across all three argument shapes. |
+| File                    | Compares                                              | Notes                                                                                                                                                                                                        |
+| ----------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `bench-proof-loop.js`   | member contains-last / enumerate-all / append-split   | Core solver workload — head unification, choice-point allocation, recursive descent.                                                                                                                         |
+| `bench-drivers.js`      | sync callback / sync gen / async callback / async gen | Take-1 over `member` — surfaces driver overhead vs the proof loop.                                                                                                                                           |
+| `bench-inline-goals.js` | math.add forward / reverse / verify                   | Reversible-operator path — `isBound` probe + `bindVal` + `cut(sys)` across all three argument shapes.                                                                                                        |
+| `bench-parity.js`       | hand-written / `clause\`...\``/`prolog\`...\``        | Same `member`/`append` workload through all three encodings. Detects per-encoding regressions in `lower.js` or front-end IR shape divergence; clause and prolog should sit within bench noise of each other. |
+
+## Reading `bench-parity.js`
+
+Variants are named `<workload>_<encoding>` so the table groups naturally
+when sorted. Four encodings of the same logic per workload:
+
+- `_hand` — pre-compiler raw `(...vars) => [...]` style.
+- `_codegen` — what an IR→JS codegen pass _would_ emit (currently
+  hand-written to mimic `lower.js` semantics including fresh Variables
+  for wildcards).
+- `_clause` — iter-1 `clause\`...\`` per-clause DSL.
+- `_prolog` — iter-2 `prolog\`...\`` strict-Prolog parser.
+
+Three assertions the bench supports:
+
+1. **`_clause` ≈ `_prolog`** within each workload — same IR, same lowered
+   runtime fns, should land within bootstrap CI of each other. A
+   significant gap means a front-end shape divergence or a `lower.js`
+   change that affects one path more than the other.
+2. **`_codegen` ≈ `_hand`** for wildcard-free rules (e.g. `append10`).
+   Direct evidence that codegen-based lowering would close the
+   compiler-overhead gap. A growing `_codegen` vs `_hand` gap on a
+   wildcard-free rule means the codegen baseline drifted — investigate.
+3. **`_hand` is the floor for wildcard-bearing rules** because
+   hand-written cheats by omitting value-position properties for
+   wildcards (deep6 open-object semantics). The current `lower.js`
+   doesn't, hence the residual gap between `_codegen` and `_hand` on
+   member workloads.
+
+As of iter-2 ship: `_clause` ≈ `_prolog` within ~1–2%; `_codegen`
+closes ~50–80% of the compiler-overhead gap on member, ~100% on
+append. The bench detects regressions on top of these baselines.
 
 ## Pending
 
 - **Higher-order rules** — `map` / `filter` / `compose` exercising the dynamic
-  `call(...)` runtime helper. Pending after the rule-compiler MVP lands so the
-  catalog can dogfood compiled rules vs hand-written ones.
-- **Compiled-vs-handwritten parity** — once `src/rules/{system,comp,math,bits,logic}.js`
-  are dogfood-rewritten via `src/compile/`, add a parity bench that runs the
-  same workload through both encodings and asserts no regression.
+  `call(...)` runtime helper. Useful once a real workload pushes on these
+  patterns hard enough to motivate a dedicated bench.
 - **Cut + halt** — `notEq` / `once` patterns and `halt`-aborted searches; covered
   partially by `bench-proof-loop.js`'s `appendSplit10` (cut-free) but missing a
   cut-heavy workload.

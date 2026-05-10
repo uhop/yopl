@@ -1,5 +1,0 @@
-{
-  "permissions": {
-    "allow": ["Bash(xxd)", "Read(//home/eugene/Open/deep6/.windsurf/**)", "Bash(npm test:*)", "Bash(npm pack:*)"]
-  }
-}
