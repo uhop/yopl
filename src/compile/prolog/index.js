@@ -29,7 +29,7 @@
 import {IR} from '../ir.js';
 import {tokenize} from '../parse/lexer.js';
 import {makeCursor} from '../parse/cursor.js';
-import {defaultTermOpTable, addOp} from '../parse/op-table.js';
+import {defaultBodyOpTable, addOp} from '../parse/op-table.js';
 import {lowerRules} from '../lower.js';
 import {parseClause} from './clause.js';
 import {parseProgram} from './program.js';
@@ -37,7 +37,7 @@ import {parseProgram} from './program.js';
 const verifyStrings = strings => Array.isArray(strings) && Array.isArray(strings.raw);
 
 const buildOpTable = options => {
-  const table = defaultTermOpTable();
+  const table = defaultBodyOpTable();
   if (options.operators) {
     for (const op of options.operators) addOp(table, op);
   }

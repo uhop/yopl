@@ -52,9 +52,14 @@ const TOP_PRIO = 1200;
 
 const NON_PRIMARY_KINDS = new Set(['comma', 'rparen', 'rbracket', 'pipe', 'period', 'semicolon', 'colondash', 'eof']);
 
-const opNameOf = tok => (tok.kind === 'sym' || tok.kind === 'ident' ? tok.value : null);
+const opNameOf = tok => {
+  if (tok.kind === 'sym' || tok.kind === 'ident') return tok.value;
+  if (tok.kind === 'comma') return ',';
+  if (tok.kind === 'semicolon') return ';';
+  return null;
+};
 
-export const parseExpr = (cursor, opTable, maxPrio = TOP_PRIO) => {
+export const parseExpr = (cursor, opTable, maxPrio = TOP_PRIO, parsePrim = parsePrimary) => {
   let lhs;
   let lhsPrio;
 
@@ -68,15 +73,15 @@ export const parseExpr = (cursor, opTable, maxPrio = TOP_PRIO) => {
     if (op && op.priority <= maxPrio) {
       cursor.advance();
       const childMax = op.type === 'fy' ? op.priority : op.priority - 1;
-      const operand = parseExpr(cursor, opTable, childMax);
+      const operand = parseExpr(cursor, opTable, childMax, parsePrim);
       lhs = Compound(op.target ?? op.name, [operand]);
       lhsPrio = op.priority;
     } else {
-      lhs = parsePrimary(cursor, opTable);
+      lhs = parsePrim(cursor, opTable);
       lhsPrio = 0;
     }
   } else {
-    lhs = parsePrimary(cursor, opTable);
+    lhs = parsePrim(cursor, opTable);
     lhsPrio = 0;
   }
 
@@ -90,7 +95,7 @@ export const parseExpr = (cursor, opTable, maxPrio = TOP_PRIO) => {
     if (lhsPrio > leftMax) break;
     const rightMax = op.type === 'xfy' ? op.priority : op.priority - 1;
     cursor.advance();
-    const rhs = parseExpr(cursor, opTable, rightMax);
+    const rhs = parseExpr(cursor, opTable, rightMax, parsePrim);
     lhs = Compound(op.target ?? op.name, [lhs, rhs]);
     lhsPrio = op.priority;
   }
@@ -98,7 +103,7 @@ export const parseExpr = (cursor, opTable, maxPrio = TOP_PRIO) => {
   return lhs;
 };
 
-const parsePrimary = (cursor, opTable) => {
+export const parsePrimary = (cursor, opTable, parsePrim = parsePrimary) => {
   const t = cursor.peek();
   if (t.kind === 'interp') {
     cursor.advance();
@@ -115,7 +120,7 @@ const parsePrimary = (cursor, opTable) => {
   if (t.kind === 'lbracket') return parseListExpr(cursor, opTable);
   if (t.kind === 'lparen') {
     cursor.advance();
-    const inner = parseExpr(cursor, opTable, TOP_PRIO);
+    const inner = parseExpr(cursor, opTable, TOP_PRIO, parsePrim);
     cursor.eat('rparen');
     return inner;
   }

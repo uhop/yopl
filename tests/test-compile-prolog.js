@@ -4,7 +4,7 @@ import solve from '../src/solve.js';
 import {Var, Wild, Lit, Compound, List, Call, Cut, Fail, Js, IR} from '../src/compile/ir.js';
 import {tokenize} from '../src/compile/parse/lexer.js';
 import {makeCursor} from '../src/compile/parse/cursor.js';
-import {defaultTermOpTable} from '../src/compile/parse/op-table.js';
+import {defaultTermOpTable, defaultBodyOpTable} from '../src/compile/parse/op-table.js';
 import {parseClause, parseGoal, parseGoals} from '../src/compile/prolog/clause.js';
 import {parseProgram} from '../src/compile/prolog/program.js';
 import {prolog, prologClause} from '../src/compile/prolog/index.js';
@@ -12,7 +12,7 @@ import {rules as systemRules} from '../src/rules/system.js';
 import {submit, TEST} from './harness.js';
 import {makeList} from './helpers.js';
 
-const parse = (src, opTable = defaultTermOpTable(), values = []) => {
+const parse = (src, opTable = defaultBodyOpTable(), values = []) => {
   const tokens = tokenize([src]);
   const cursor = makeCursor(tokens, values);
   const result = parseClause(cursor, opTable);
@@ -437,5 +437,75 @@ export default [
     const r = prologClause({operators: customOps})`bar(X, Y) :- foo(X === Y)`;
     const arg = r.body[0].args[0];
     eval(TEST('eq(arg, Compound("eq", [Var("X"), Var("Y")]))'));
+  },
+
+  // -------------------------------------------------------------------------
+  // body-context operators
+  function test_body_op_negation_simple() {
+    // `\+ foo(X)` in body desugars to Call('not', [Compound('foo', [X])])
+    const r = prologClause`safe(X) :- \\+ unsafe(X)`;
+    eval(TEST('r.body.length === 1'));
+    eval(TEST('eq(r.body[0], Call("not", [Compound("unsafe", [Var("X")])]))'));
+  },
+  function test_body_op_negation_with_conjunction() {
+    const r = prologClause`safe(X) :- check(X), \\+ unsafe(X), ok(X)`;
+    eval(TEST('r.body.length === 3'));
+    eval(TEST('eq(r.body[0], Call("check", [Var("X")]))'));
+    eval(TEST('eq(r.body[1], Call("not", [Compound("unsafe", [Var("X")])]))'));
+    eval(TEST('eq(r.body[2], Call("ok", [Var("X")]))'));
+  },
+  function test_body_op_unification_as_call() {
+    // `X = Y` in body: comp '=' is in term op table at 700 xfx; goalize
+    // sees Compound('=', [X, Y]) and converts to Call('=', [X, Y]).
+    const r = prologClause`eq(X, Y) :- X = Y`;
+    eval(TEST('eq(r.body, [Call("=", [Var("X"), Var("Y")])])'));
+  },
+  function test_body_op_disjunction_throws() {
+    let threw = false;
+    try {
+      prologClause`pick(X) :- a(X) ; b(X)`;
+    } catch (e) {
+      threw = true;
+    }
+    eval(TEST('threw'));
+  },
+  function test_body_op_if_then_throws() {
+    let threw = false;
+    try {
+      prologClause`branch(X) :- p(X) -> q(X)`;
+    } catch (e) {
+      threw = true;
+    }
+    eval(TEST('threw'));
+  },
+  function test_body_op_paren_grouping() {
+    // Parens preserve body-context operator parsing inside.
+    const r = prologClause`top(X) :- (a(X), b(X)), c(X)`;
+    eval(TEST('r.body.length === 3'));
+    eval(TEST('eq(r.body[0], Call("a", [Var("X")]))'));
+    eval(TEST('eq(r.body[1], Call("b", [Var("X")]))'));
+    eval(TEST('eq(r.body[2], Call("c", [Var("X")]))'));
+  },
+  function test_body_op_negation_end_to_end() {
+    // Real solve: positive(X) succeeds when not negative(X).
+    const userRules = prolog`
+      negative(bad).
+      positive(X) :- \\+ negative(X).
+    `;
+    const rules = {...systemRules, ...userRules};
+    const out = [];
+    solve(rules, 'positive', ['good'], () => out.push(true));
+    eval(TEST('out.length === 1'));
+    const out2 = [];
+    solve(rules, 'positive', ['bad'], () => out2.push(true));
+    eval(TEST('out2.length === 0'));
+  },
+  function test_body_op_op4_alias_in_body() {
+    // op/4 alias `===` → `eq` desugars at parse time; goalize wraps in Call.
+    const r = prolog({operators: [{priority: 700, type: 'xfx', name: '===', target: 'eq'}]})`
+      same(X, Y) :- X === Y.
+    `;
+    const ir = r[IR];
+    eval(TEST('eq(ir.same.clauses[0].body, [Call("eq", [Var("X"), Var("Y")])])'));
   }
 ];

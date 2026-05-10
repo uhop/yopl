@@ -66,3 +66,23 @@ export const defaultTermOpTable = () => {
   for (const op of TERM_DEFAULTS) addOp(table, op);
   return table;
 };
+
+// Body-context operators added on top of the term defaults. Conjunction
+// `,` at 1000 stays above the args parser's maxPrio of 999, so it
+// remains a structural separator inside `[...]` and `(...)` while
+// becoming a true conjunction operator at the body's maxPrio of 1200.
+// `\+` carries `target: 'not'` so the prefix-application desugars to
+// `Compound('not', [G])` at parse time, which `goalize` then converts
+// to `Call('not', [G])`.
+const BODY_DEFAULTS = [
+  {name: ',', priority: 1000, type: 'xfy'},
+  {name: ';', priority: 1100, type: 'xfy'},
+  {name: '->', priority: 1050, type: 'xfy'},
+  {name: '\\+', priority: 900, type: 'fy', target: 'not'}
+];
+
+export const defaultBodyOpTable = () => {
+  const table = defaultTermOpTable();
+  for (const op of BODY_DEFAULTS) addOp(table, op);
+  return table;
+};

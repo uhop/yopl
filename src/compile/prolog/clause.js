@@ -1,32 +1,34 @@
 // Strict-Prolog clause parser. Produces `{name, head: Term[], body: Goal[]}`
-// per parsed clause; multi-clause program parsing happens in ./program.js
-// (later step), and tagged-template entry points in ./index.js.
+// per parsed clause; multi-clause program parsing happens in ./program.js,
+// and tagged-template entry points in ./index.js.
 //
-// Grammar (step-4 scope; body operators `;` `->` `\+` deferred):
+// Grammar:
 //
 //   clause   := head [ ':-' body ] '.'
 //   head     := atom-name | atom-name '(' args ')'
-//   body     := goal ( ',' goal )*
-//   goal     := '!' | 'fail' | call | sym-call | interpolation
-//   call     := ident [ '(' args ')' ]
-//   sym-call := sym '(' args ')' | sym
-//   args     := expr ( ',' expr )*               (expr at maxPrio = 999)
+//   body     := body-expr                       (parsed via parseBodyExpr)
+//   args     := expr ( ',' expr )*              (expr at maxPrio = 999)
 //
 // Heads must be atoms (lowercase ident or symbolic atom) — uppercase
 // idents in head position are rejected because predicate names are
 // atoms in Prolog, and a Var-shaped head would be incoherent.
 //
-// In goal position an uppercase ident becomes `Call(Var(name), args)`
-// for runtime dynamic dispatch (matches iter-1's `clause` front-end).
+// Body parsing uses the body-context Pratt parser (parseBodyExpr) which
+// handles `,` (conjunction) and `\+` (negation) operators along with
+// `!` cut, `fail`, and goal-context interpolation slots. The resulting
+// term tree is then walked by `goalize` to produce a `Goal[]`.
 //
-// Argument terms go through the operator-precedence parser
-// (`parseExpr`), so `foo(X + 1)` and `member(Y, [1, 2 | T])` parse
-// as expected.
+// Argument terms (head args, body-call args) go through the term-context
+// operator-precedence parser (`parseExpr`), so `foo(X + 1)` parses
+// correctly with arithmetic operators. The `parseGoal`/`parseGoals`
+// helpers below remain for direct testing and for parsing simple
+// directive goals (`:- op(...)`); they don't see body operators.
 
 import {Var, Call, Cut, Fail} from '../ir.js';
 import {wrapGoalInterp} from '../parse/interp.js';
 import {isVarStart} from '../parse/util.js';
 import {parseExpr} from '../parse/expr.js';
+import {parseBodyExpr, goalize} from '../parse/body-expr.js';
 
 const ARG_PRIO = 999;
 
@@ -109,7 +111,10 @@ export const parseGoals = (cursor, opTable) => {
 export const parseClause = (cursor, opTable) => {
   const {name, args: head} = parseHead(cursor, opTable);
   let body = [];
-  if (cursor.accept('colondash')) body = parseGoals(cursor, opTable);
+  if (cursor.accept('colondash')) {
+    const bodyTerm = parseBodyExpr(cursor, opTable);
+    body = goalize(bodyTerm);
+  }
   cursor.eat('period');
   return {name, head, body};
 };
