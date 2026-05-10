@@ -11,7 +11,7 @@
 // See dev-docs/compiler-ir.md for the IR design and the per-activation
 // walk rationale.
 
-import {_} from 'deep6/env.js';
+import {variable} from 'deep6/env.js';
 import {call as runtimeCall, cut as runtimeCut, fail as runtimeFail} from '../rules/system-runtime.js';
 import {collectVars, IR_KINDS} from './ir.js';
 
@@ -47,7 +47,7 @@ const lowerTerm = (term, vars) => {
     case 'var':
       return vars[term.name];
     case 'wildcard':
-      return _;
+      return variable();
     case 'literal':
       return lowerLitValue(term.value, vars, new Map());
     case 'cons':

@@ -22,21 +22,11 @@
 // Question: who owns the zebra and who drinks water?
 // Unique solution: Japanese owns the zebra, Norwegian drinks water.
 //
-// Two yopl quirks worth flagging:
-//
-// 1. Wildcards: yopl's `_` lowers to deep6's "any-match" sentinel
-//    (matches anything, never binds), unlike standard Prolog's `_`
-//    which is a fresh variable each occurrence. For constraints to
-//    propagate through unification, every Houses-side slot must be a
-//    NAMED variable. We therefore name every position; underscore-
-//    prefixed names (`_t`, `_h`) in helper rules are still real
-//    variables — the prefix just signals "anonymous, fresh".
-//
-// 2. Distinctness: pure-Prolog member-style constraints don't enforce
-//    that each attribute value is unique across houses. Without
-//    distinct/1 the search produces many configurations that satisfy
-//    every individual member but assign the same color (etc.) to two
-//    houses. The trailing `distinct(...)` calls prune to one answer.
+// Distinctness note: pure-Prolog member-style constraints don't enforce
+// that each attribute value is unique across houses. Without distinct/1
+// the search produces many configurations that satisfy every individual
+// member but assign the same color (etc.) to two houses. The trailing
+// distinct(...) calls prune to one answer.
 
 import {variable as v} from 'deep6/unify.js';
 import assemble from 'deep6/traverse/assemble.js';
@@ -54,47 +44,47 @@ const puzzle = prolog`
       house(N4, C4, P4, D4, S4),
       house(N5, C5, P5, D5, S5)
     ],
-    member(house(englishman, red, EngP, EngD, EngS), Houses),
-    member(house(spaniard, SpC, dog, SpD, SpS), Houses),
-    member(house(GcN, green, GcP, coffee, GcS), Houses),
-    member(house(ukrainian, UkC, UkP, tea, UkS), Houses),
+    member(house(englishman, red, _, _, _), Houses),
+    member(house(spaniard, _, dog, _, _), Houses),
+    member(house(_, green, _, coffee, _), Houses),
+    member(house(ukrainian, _, _, tea, _), Houses),
     rightOf(
-      house(GgN, green, GgP, GgD, GgS),
-      house(IgN, ivory, IgP, IgD, IgS),
+      house(_, green, _, _, _),
+      house(_, ivory, _, _, _),
       Houses
     ),
-    member(house(SnN, SnC, snails, SnD, oldGold), Houses),
-    member(house(YkN, yellow, YkP, YkD, kools), Houses),
+    member(house(_, _, snails, _, oldGold), Houses),
+    member(house(_, yellow, _, _, kools), Houses),
     nextTo(
-      house(ChN, ChC, ChP, ChD, chesterfields),
-      house(FxN, FxC, fox, FxD, FxS),
+      house(_, _, _, _, chesterfields),
+      house(_, _, fox, _, _),
       Houses
     ),
     nextTo(
-      house(KhN, KhC, KhP, KhD, kools),
-      house(HoN, HoC, horse, HoD, HoS),
+      house(_, _, _, _, kools),
+      house(_, _, horse, _, _),
       Houses
     ),
-    member(house(LsN, LsC, LsP, orangeJuice, luckyStrike), Houses),
-    member(house(japanese, JpC, JpP, JpD, parliaments), Houses),
+    member(house(_, _, _, orangeJuice, luckyStrike), Houses),
+    member(house(japanese, _, _, _, parliaments), Houses),
     nextTo(
-      house(norwegian, NoC, NoP, NoD, NoS),
-      house(BlN, blue, BlP, BlD, BlS),
+      house(norwegian, _, _, _, _),
+      house(_, blue, _, _, _),
       Houses
     ),
-    member(house(FishOwner, FoC, zebra, FoD, FoS), Houses),
-    member(house(WaterDrinker, WdC, WdP, water, WdS), Houses),
+    member(house(FishOwner, _, zebra, _, _), Houses),
+    member(house(WaterDrinker, _, _, water, _), Houses),
     distinct([norwegian, N2, N3, N4, N5]),
     distinct([C1, C2, C3, C4, C5]),
     distinct([P1, P2, P3, P4, P5]),
     distinct([D1, D2, milk, D4, D5]),
     distinct([S1, S2, S3, S4, S5]).
 
-  member(X, [X | _t]).
-  member(X, [_h | T]) :- member(X, T).
+  member(X, [X | _]).
+  member(X, [_ | T]) :- member(X, T).
 
-  rightOf(R, L, [L, R | _t]).
-  rightOf(R, L, [_h | T]) :- rightOf(R, L, T).
+  rightOf(R, L, [L, R | _]).
+  rightOf(R, L, [_ | T]) :- rightOf(R, L, T).
 
   nextTo(A, B, L) :- rightOf(A, B, L).
   nextTo(A, B, L) :- rightOf(B, A, L).
