@@ -23,6 +23,7 @@
 import {variable as v} from 'deep6/unify.js';
 import assemble from 'deep6/traverse/assemble.js';
 import solve from '../src/solve.js';
+import gen from '../src/solvers/gen.js';
 import {prolog} from '../src/compile/prolog/index.js';
 import {rules as systemRules} from '../src/rules/system.js';
 import {rules as compRules} from '../src/rules/comp.js';
@@ -30,8 +31,14 @@ import {rules as mathRules} from '../src/rules/math.js';
 import {submit, TEST} from './harness.js';
 
 const KNIGHT_MOVES = [
-  [1, 2], [2, 1], [2, -1], [1, -2],
-  [-1, -2], [-2, -1], [-2, 1], [-1, 2]
+  [1, 2],
+  [2, 1],
+  [2, -1],
+  [1, -2],
+  [-1, -2],
+  [-2, -1],
+  [-2, 1],
+  [-1, 2]
 ];
 
 const BOARD_SIZE = 5;
@@ -63,7 +70,8 @@ const visitedSet = (consHead, env) => {
 const onwardDegree = (x, y, visited) => {
   let count = 0;
   for (const [dx, dy] of KNIGHT_MOVES) {
-    const nx = x + dx, ny = y + dy;
+    const nx = x + dx,
+      ny = y + dy;
     if (inBoard(nx, ny) && !visited.has(`${nx},${ny}`)) ++count;
   }
   return count;
@@ -81,27 +89,30 @@ const CENTER = (BOARD_SIZE + 1) / 2;
 // degree wins; ties broken by larger distance to board center (corners
 // preferred over edges, edges over interior). On 5×5 from any corner
 // this is enough to find a full open tour without backtracking.
-const warnsdorffSort = ({X, Y, Visited, Sorted}) => env => {
-  const x = deref(X, env);
-  const y = deref(Y, env);
-  if (typeof x !== 'number' || typeof y !== 'number') return false;
-  const visited = visitedSet(Visited, env);
-  const candidates = [];
-  for (const [dx, dy] of KNIGHT_MOVES) {
-    const nx = x + dx, ny = y + dy;
-    if (inBoard(nx, ny) && !visited.has(`${nx},${ny}`)) {
-      const after = new Set(visited);
-      after.add(`${nx},${ny}`);
-      const tieBreak = -(Math.abs(nx - CENTER) + Math.abs(ny - CENTER));
-      candidates.push({x: nx, y: ny, degree: onwardDegree(nx, ny, after), tieBreak});
+const warnsdorffSort =
+  ({X, Y, Visited, Sorted}) =>
+  env => {
+    const x = deref(X, env);
+    const y = deref(Y, env);
+    if (typeof x !== 'number' || typeof y !== 'number') return false;
+    const visited = visitedSet(Visited, env);
+    const candidates = [];
+    for (const [dx, dy] of KNIGHT_MOVES) {
+      const nx = x + dx,
+        ny = y + dy;
+      if (inBoard(nx, ny) && !visited.has(`${nx},${ny}`)) {
+        const after = new Set(visited);
+        after.add(`${nx},${ny}`);
+        const tieBreak = -(Math.abs(nx - CENTER) + Math.abs(ny - CENTER));
+        candidates.push({x: nx, y: ny, degree: onwardDegree(nx, ny, after), tieBreak});
+      }
     }
-  }
-  candidates.sort((a, b) => a.degree - b.degree || a.tieBreak - b.tieBreak);
-  const pairs = candidates.map(({x, y}) => ({name: 'pair', args: [x, y]}));
-  if (Sorted.isBound(env)) return false;
-  env.bindVal(Sorted.name, buildCons(pairs));
-  return true;
-};
+    candidates.sort((a, b) => a.degree - b.degree || a.tieBreak - b.tieBreak);
+    const pairs = candidates.map(({x, y}) => ({name: 'pair', args: [x, y]}));
+    if (Sorted.isBound(env)) return false;
+    env.bindVal(Sorted.name, buildCons(pairs));
+    return true;
+  };
 
 const puzzle = prolog`
   tour(StartX, StartY, N, [pair(StartX, StartY) | Rest]) :-
@@ -172,11 +183,13 @@ const verifyPath = path => {
 
 export default [
   function test_knight_partial_tour_10_steps() {
+    // First solution only — `solve` exhausts the search tree, which on the
+    // naïve `tour/4` encoding is O(branching^N) and infeasible above N≈10.
+    // The test's intent is "naïve encoding finds a partial tour", not
+    // "enumerate every 10-step path from (1,1)".
     const Path = v('Path');
-    let path = null;
-    solve(knightRules, 'tour', [1, 1, 10, Path], env => {
-      if (!path) path = consToArray(assemble(Path, env));
-    });
+    const {value: env, done} = gen(knightRules, 'tour', [1, 1, 10, Path]).next();
+    const path = done ? null : consToArray(assemble(Path, env));
     eval(TEST('path !== null'));
     eval(TEST('path.length === 11'));
     eval(TEST("path[0].name === 'pair' && path[0].args[0] === 1 && path[0].args[1] === 1"));
