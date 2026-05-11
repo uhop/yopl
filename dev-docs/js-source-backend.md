@@ -61,28 +61,73 @@ on per-activation cost, in the same ballpark as the EnvMap swap
 ## Design-space taxonomy — "less per-activation work"
 
 The current per-activation work isn't a single thing. It's a stack
-of avoidable layers on top of one **unavoidable** core: runtime
-values that contain Variable references must be fresh per activation
-(load-bearing for backtracking correctness — `solve.js` mints fresh
+of avoidable layers on top of one **unavoidable** core given the
+current architecture: runtime values that contain Variable
+references must be fresh per activation (load-bearing for
+backtracking correctness — `solve.js` mints fresh
 `variable(Symbol(N))` per clause attempt so concurrent activations
 of the same clause don't share binding-storage keys).
 
-Four regimes, in order of decreasing per-activation cost:
+Four regimes:
 
-| Regime | Calling convention | Per-activation work | Where it lives |
-| --- | --- | --- | --- |
-| **A. Status quo** | `fn(...vars) → [{args}, ...goals]` | Full IR walk + dispatch + allocation of result tree | `lower.js` today |
-| **B. Codegen** | Same as A | **Dispatch + allocation only** (IR walk eliminated by specialization) | This POC |
-| **B'. Codegen + constant-output sharing** | Same as A | **Zero for ground clauses, codegen for var-dependent ones** | Strict improvement on B; see below |
-| **C. Mutate-a-workspace (WAM-style)** | `fn(env, trail, args)` — binds in place, no return tree | **Zero allocation per activation** (Variables drawn from a per-depth pool) | Outside JS-source scope; see "Regime C" below |
+| Regime | Approach | Where it lives |
+| --- | --- | --- |
+| **A. Status quo** | Per-activation IR walk via `lower.js` closure factory | `lower.js` today |
+| **B. Codegen** | Pre-specialize the per-activation walk via `new Function` | This POC |
+| **B'. Codegen + constant-output** | B plus shared-constant return for ground clauses | Standalone analysis pass; add to POC |
+| **C. Re-imagined runtime** | Architecture change — different rule-fn shape, possibly different proof loop, possibly different unifier. The "outlandish JS-based alternative runtime" queue item | Major redesign; see below |
 
 A → B is a codegen change. B → B' is an analysis pass. B' → C is a
-calling-convention change that propagates into `solve.js`'s proof
-loop. Each step buys more perf at increasing implementation cost
-and increasing distance from the current architecture.
+broader architecture change that propagates beyond `lower.js`. Each
+step buys more perf at increasing implementation cost and increasing
+distance from the current architecture.
 
 The JS-source POC is **regime B + B'**. Regime C is an adjacent
-research path; see the section near the end of this doc.
+research path discussed at the end of this doc.
+
+## Input is IR (or source); the rules dict is one possible output
+
+The current runtime rules-dict shape (`{name: [fn, ...]}` where each
+`fn` returns `[{args}, ...goals]`) was the **practical** basis for
+the four existing solvers — a concrete contract they could all
+agree on. It is not part of the design contract for new backends.
+The **abstract** basis going forward is IR (user direction
+2026-05-10).
+
+A new backend's input is one of:
+
+- The **IR** directly (5 Term + 4 Goal kinds + Clause + Rule), or
+- **Source text** — Prolog (`prolog\`...\``), per-clause
+  (`clause\`...\``), or whatever new front-end is convenient — which
+  converts to IR via the compiler's existing parse path. No new
+  parser needed; source-text consumers reuse `compile/prolog/`,
+  `compile/clause/`, and `compile/ir.js`.
+
+A new backend's output is **whatever serves its runtime best**.
+The current rules-dict shape is one option (drop-in for the four
+solvers). Alternatives:
+
+- A flat `Int32Array` of opcodes the runtime dispatches via a single
+  big `switch`.
+- A single monolithic dispatch function with all rules inlined.
+- A specialized graph of clause structures linked by predicate name
+  (no per-name array indirection).
+- A WASM module exporting a `solve` entry — the WASM backend's case.
+- Something else entirely.
+
+If the output shape diverges from the rules dict, the backend
+brings its own runtime + proof loop + driver family. Functionality
+must stay on par (the four delivery shapes — sync push, sync pull,
+async push, async pull — all present); the internals are free.
+
+**Even regimes B and B' aren't forced to produce the current rules
+dict shape.** The hypothesis section above assumes they do (it's
+the conservative, drop-in path), and that's the right shape for the
+POC to start at because it minimizes blast radius. But if a
+different output JITs measurably better, it's on the table. The
+bench is the arbiter; rules-dict-shape preservation is a convenience
+inherited from regime A's solver contract, not a requirement of the
+IR.
 
 ## What V8 and JSC do with dynamically-created functions
 
@@ -126,16 +171,20 @@ defer until post-POC.
 
 ## Codegen variants
 
+(Variant numbers below are independent of the regime letters above
+— "variant" refers to **how** to emit code inside regime B; "regime"
+refers to **which** of the four design-space points the POC sits at.)
+
 Four shapes considered for IR → JS source:
 
 | Variant | Function shape | Trade-off |
 | --- | --- | --- |
-| **A. eval'd closures, same shape as today** | `eval` returns the same closure factory `lower.js` produces, just from source text | No win — V8 sees the same shape either way; `eval` overhead negates it |
-| **B. Per-clause `new Function`, head/body inlined** | One `new Function(...vars, body)` per clause; head args constructed as literal expressions; body goals emitted inline | Best win/effort ratio. **Default.** |
-| **C. Whole rules dict → one module** | Emit a JS module string; load via dynamic `import()` of a `data:` or `blob:` URL | Async load; full module scoping; bundler-unfriendly; deferred |
-| **D. `new Function` returning an array literal** | Like B, but the whole body is one `return [...]` expression with no statements | Marginally smaller; V8 likely inlines either way; not worth the syntactic constraint |
+| **V1. eval'd closures, same shape as today** | `eval` returns the same closure factory `lower.js` produces, just from source text | No win — V8 sees the same shape either way; `eval` overhead negates it |
+| **V2. Per-clause `new Function`, head/body inlined** | One `new Function(...vars, body)` per clause; head args constructed as literal expressions; body goals emitted inline | Best win/effort ratio. **Default.** |
+| **V3. Whole rules dict → one module** | Emit a JS module string; load via dynamic `import()` of a `data:` or `blob:` URL | Async load; full module scoping; bundler-unfriendly; deferred |
+| **V4. `new Function` returning an array literal** | Like V2, but the whole body is one `return [...]` expression with no statements | Marginally smaller; V8 likely inlines either way; not worth the syntactic constraint |
 
-**Variant B** is the right default. The generated function for
+**Variant V2** is the right default. The generated function for
 `member(X, [X | _])` would look like:
 
 ```js
@@ -157,7 +206,7 @@ new Function('X', 'T', 'argN',
 );
 ```
 
-Compared to the closure factory `lower.js` produces today, this:
+Compared to the closure factory `lower.js` produces today, V2:
 
 1. **Skips the `vars` dict** — variables are positional parameters.
    Saves one object allocation + N property assignments per activation.
@@ -232,9 +281,13 @@ Compile-time classification: a clause is constant-output iff
 recursively AND every `Lit` value contains no IR (gated on the
 closed `IR_KINDS` set, same logic as `lowerLitValue`).
 
-This is **a one-off improvement to `lower.js` independent of the
-JS-source codegen** — it could land as a stand-alone optimization
-today. Worth measuring during the POC: **how much of yopl's
+This is **a standalone optimization independent of the JS-source
+codegen** — could land as its own POC. Per
+[`implementation-discipline.md`](implementation-discipline.md), it
+lives as a new module (e.g., `src/compile/analysis/constant-output.js`
++ a new lowering entrypoint that consumes it), **not as edits to
+`lower.js`**. The existing closure-factory path stays untouched as
+the baseline. Worth measuring during the POC: **how much of yopl's
 representative workload is constant-output?** If 30%+ of clause
 activations land in that class, B' is a meaningful win on its own.
 If < 10%, it's a footnote.
@@ -277,16 +330,16 @@ WASM if available + tail-call supported, after WASM POC ships).
 Single IR, multiple lowering backends, one feature-detection
 point.
 
-**Caveat on the "no driver fork" property**: this only holds for
-regimes B and B'. Regime C changes the rule-fn calling convention,
-which propagates into `solve.js`'s proof loop, which means a
-parallel proof loop and a parallel set of four drivers. Same
-delivery shapes (sync push, sync pull, async push, async pull),
-different internal contract. The existing four-solver API is not a
-hard constraint — if regime C ships, it ships as a parallel
-`solversWam` (or similar) family at the same level as the existing
-four, picked via the same feature-detection dispatch. The user-
-facing functionality stays on par; the internals diverge.
+**Caveat on the "no driver fork" property**: this only holds while
+the backend chooses to **preserve the rules dict shape**. Per the
+"Input is IR; rules dict is one possible output" section above,
+that preservation is a convenience, not a requirement. A regime-B
+codegen that emits something different from `{name: [fn, ...]}` —
+say, a single packed dispatch function — would bring its own proof
+loop and driver family. The default POC path preserves the dict
+shape to minimize blast radius; the alternative is open. Regime C
+explicitly diverges. Either way, functionality stays on par across
+the four delivery shapes.
 
 ## Commonalities with the potential WASM backend
 
@@ -325,13 +378,20 @@ Don't refactor first. Don't generalize first. Build the minimum
 that puts a number on "does emitting JS source from yopl IR beat
 the current closure factory?"
 
-1. **Constant-output classifier first (regime B')** — ~30 lines in
-   the codegen pass. Classify each clause as constant-output or
-   var-dependent. Emit `() => SHARED_TERMS` for the former.
-   Independent of `new Function`; standalone improvement to
-   `lower.js`. Measure the constant-output fraction on the existing
-   test corpus while you're there — that number informs how to
-   weight regime B vs regime C if the codegen win is small.
+All POC files are new (per
+[`implementation-discipline.md`](implementation-discipline.md)).
+`src/compile/lower.js` stays untouched as the baseline.
+
+1. **Constant-output classifier first (regime B')** — new file:
+   `src/compile/analysis/constant-output.js`, ~30 lines. Classifies
+   each clause as constant-output or var-dependent given its IR.
+   Plus a new lowering entrypoint (`src/compile/lower-const.js`)
+   that wraps the existing lowerRule from `lower.js` but returns
+   `() => SHARED_TERMS` for constant-output clauses (the shared
+   constant is the existing lower.js's one-time result, memoized).
+   Measure the constant-output fraction on the existing test corpus
+   while you're there — that number informs how to weight regime
+   B vs regime C if the codegen win is small.
 2. **Write `src/compile/lower-jsrc.js`** — parallel to `lower.js`,
    same export surface (`lowerRule`, `lowerRules`). Internally
    uses `new Function` to emit per-clause functions whose body is
@@ -339,7 +399,7 @@ the current closure factory?"
    lines of straightforward string building. Variable lifetime
    analysis is **not** needed for the POC — emit naïvely; optimize
    only if the bench warrants it.
-3. **Two new bench files**:
+3. **Two new bench files** (siblings, not replacements):
    - `bench/bench-proof-loop-jsrc.js` — same workload as
      `bench-proof-loop.js`, but built via `lower-jsrc.js`. Compares
      activation cost.
@@ -347,11 +407,14 @@ the current closure factory?"
      `bench-inline-goals.js`. Tests the `js`-goal-factory path
      specifically.
 4. **Run the existing parity bench** (`bench-handwritten-vs-compiled.js`)
-   with the new lowering target as a third column.
-5. **Decision gates**:
+   in a new sibling (`bench-handwritten-vs-jsrc.js`) with the new
+   lowering target as a third column.
+5. **Decision gates** (decisions only — file reorganization is a
+   separate later pass per implementation-discipline.md):
    - JS-source is **≥ 3× faster** on the proof-loop bench
-     **and** ≥ 2× on the inline-goals bench → ship as the default
-     lowering. Make `lower.js` an alias or a fallback.
+     **and** ≥ 2× on the inline-goals bench → recommend as the new
+     default lowering. Decide rename/reorganization in a separate
+     cleanup PR.
    - JS-source is **1.5-3× faster** → ship as an opt-in (`lowerRules(rules, {target: 'js-source'})`).
      Keep the closure factory default until variable-lifetime
      analysis is added and re-benched.
@@ -363,7 +426,8 @@ the current closure factory?"
 
 The constant-output classifier in step 1 is a strict win regardless
 of whether step 2 ships — file it as a small standalone PR even if
-the codegen result is neutral.
+the codegen result is neutral. Same discipline applies: new files,
+no edits to `lower.js`.
 
 Estimated POC effort: 1-2 days. No new dependencies. No new
 toolchain. The bench scaffold already exists.
@@ -390,113 +454,119 @@ toolchain. The bench scaffold already exists.
   factory references as additional parameters to the emitted
   function, or store on a shared "builtins" object passed in.
 
-## Regime C — leaner JS runtime as an adjacent path
+## Regime C — re-imagined runtime architecture
 
 Filed in the queue as "outlandish JS-based alternative runtime as
-IR target." User confirmation 2026-05-10: the existing four-solver
-shape is **not a constraint**; if a different calling convention
-brings meaningful wins, ship it. Functionality must stay on par
-(sync push, sync pull, async push, async pull all present), but the
-internals can diverge. This elevates regime C from speculative to
-viable.
+IR target." User context 2026-05-10: this item is **not specifically
+about reproducing WAM in JS**. Prior research (predating yopl's
+current architecture) concluded that classical WAM techniques —
+tagged pointers, linear-memory heap, mutation-based unification,
+backtracking via heap-pointer reset — don't translate cleanly to JS.
+JS engines fight pointer-tagging tricks, GC fights heap-reset
+backtracking, and the perf wins WAM gets in C/Rust evaporate. yopl's
+current shape (deep6 `unify` + `Env` + four solvers + rule system)
+IS the result of that earlier "what's the right JS-native shape"
+exploration.
 
-### What regime C looks like
+Regime C is about **re-imagining the architecture again**, with the
+benefit of the IR yopl now has and the data points the bench
+scaffold can produce. The constraints are loose (per user direction
+2026-05-10):
 
-The rule fn calling convention changes. Today:
+- Not required to use the existing `unify()`. `deep6.unify` is a
+  general-purpose value-matcher (plain objects, arrays, Maps, Sets,
+  Dates, circular, open/soft, signed zero, etc.); LP needs a much
+  narrower subset and could ship a specialized unifier.
+- Not required to keep the four-solver shape. The four delivery
+  shapes (sync push, sync pull, async push, async pull) must still
+  exist with on-par functionality, but the internals can diverge.
+- Not required to keep the current rule-fn calling convention.
+- The existing IR (5 Term + 4 Goal kinds + Clause + Rule) is a
+  reasonable starting basis.
+- Rule structure itself is loosenable if the gains warrant it.
 
-```js
-fn(...vars) → [{args: [...]}, ...goalsOrCalls]
-```
+The success criterion is **measurable speedup** over regime A/B/B'
+on the existing benches, with functionality on par. The shape isn't
+specified in advance — the prior WAM exploration found that the
+"obvious" WAM-style shape isn't the right answer for JS, so the
+design space is genuinely open.
 
-Regime C:
+### Design dimensions to explore
 
-```js
-fn(env, trail, callerArgs, continuation) → bool  // bound-in-place
-```
+Each of these is independently movable; a regime-C experiment picks
+one or two to vary and holds the rest fixed:
 
-- No fresh `[{args}, ...]` array allocated per activation. The fn
-  does head unification directly via `env.bindVal` / unify-step;
-  on success, invokes the continuation for body goals.
-- Variable instances drawn from a **per-depth pool** (recycled on
-  `env.pop` — once the frame is gone, the names' bindings are
-  gone, so the same `variable(Symbol(N))` instance can be reused
-  on next entry at that depth). Pool eliminates the per-activation
-  `variable(Symbol(counter++))` allocation that dominates
-  `generateVariables` today.
-- The proof loop in `solve.js` is replaced by a parallel loop
-  matched to this convention. Same role; different shape.
+| Dimension | Current (regime A) | Alternative |
+| --- | --- | --- |
+| **Unifier** | `deep6.unify` — fully general-purpose | LP-specialized: only the IR shapes (Var, Cons, Compound, Lit-of-primitive, atoms-as-strings); narrower dispatch, no circular/open/soft path on the hot loop |
+| **Env / bindings** | `EnvMap` (Map per frame; push/pop snapshots) | Trail array of `[name, prevValue]` pairs; flat typed-array with a pointer; pool by depth |
+| **Variable instances** | Minted per activation by `generateVariables(count)` | Pre-allocated pool keyed by clause-id + activation-depth; reused after `env.pop` |
+| **Rule fn shape** | `(...vars) → [{args}, ...goals]` (returns tree) | Mutates-in-place + continuation; or yields a generator of solutions; or emits bytecode |
+| **Goal sequencing** | Array of `{name, args}` objects walked by `goals.index` | `Int32Array` of opcodes the proof loop dispatches via a single big switch; or explicit Goal-graph traversal |
+| **Proof loop** | Explicit-stack iterative in `solve.js`'s `prove` | Same shape with smaller frames; or trampolined; or split sync-fast-path + async-slow-path |
+| **Choice points** | Implicit (frames on the stack) | Explicit choice-point objects with stored continuation |
 
-### Wins beyond regime B'
+### What might genuinely work in JS that didn't in classical WAM
 
-- **Zero result-tree allocation per activation** (B/B' still allocate,
-  just more efficiently).
-- **Pooled Variable instances** — the `generateVariables` allocator
-  is currently the hottest non-unify path under deep recursion;
-  pooling addresses it directly.
-- **No `[{args}, ...goals]` indirection** — the proof loop can read
-  head args directly from the IR or from inlined codegen, with no
-  intermediate object construction.
+The prior research's negative results were specifically about
+WAM-classical techniques. Adjacent ideas that didn't get tried
+then, or that map better onto current V8/JSC:
 
-### Costs
+- **Engine-friendly object shapes for rules.** Keep regime-A's
+  return-a-tree calling convention but make the returned tree more
+  monomorphic — same length per clause, same property order, no
+  optional fields. Sparkplug / DFG-Baseline likes monomorphic
+  shapes; TurboFan / FTL specializes them. Closer to a polished
+  regime B than a regime-C redesign; might capture most of the
+  available win without architecture change.
+- **Bytecode-on-an-array goal representation.** Instead of arrays
+  of `{name, args}` objects, an `Int32Array` of opcodes the proof
+  loop dispatches via a single big `switch`. V8 specializes
+  switch-on-i32 well (this is how Ignition itself works). May
+  lower the per-goal dispatch cost below what regime B can.
+- **Specialized LP-unifier.** Independent of any regime-C
+  architectural change. A ~100-line unifier covering only the IR's
+  Term shapes could be 2-3× faster on yopl's actual workload than
+  `deep6.unify` is. Could ship as a deep6 alternative entrypoint
+  (`deep6/unify-lp.js`) or as a yopl-internal module. **The
+  cheapest experiment in the regime-C space** — measurable on
+  `bench-proof-loop.js` without any other change.
+- **Trail-based binding store** instead of `EnvMap`'s push/pop.
+  A flat array of `[name, prevValue]` entries, with a per-frame
+  pointer for backtracking. Common in WAM but the failure mode is
+  GC-vs-pointer-reset; pure-JS arrays sidestep that.
 
-- Parallel `solve.js`-style proof loop (~100 lines, mirrors the
-  existing one's shape but with different rule-fn invocation).
-- Parallel four-driver family (`solversWamPush`, `solversWamGen`,
-  + async variants) — each is a thin wrapper over the new proof
-  loop, same as the existing four wrap over `prove`. Pure
-  duplication-by-shape; no new logic per driver.
-- IR → regime-C-rule-fn codegen — different shape from regime B's
-  emitter, but the analysis (head pattern, body sequence, var
-  lifetimes) is shared. The "ir-to-plan.js" refactor mentioned
-  earlier becomes load-bearing here, not optional.
-- Behavioral parity testing — needs a cross-validation dogfood
-  similar to `tests/test-prolog-dogfood.js` but comparing
-  regime-A and regime-C **results** for every fixture, not IR
-  shapes.
+### Two trigger conditions for starting
 
-### When to start
+The recommendation in the POC section above stands: don't start a
+broad regime-C effort until either (a) regimes B/B' hit a ceiling
+on the proof-loop bench, or (b) the WASM POC stalls on boundary
+cost. Both conditions imply the per-activation IR walk isn't the
+bottleneck — which is exactly what regime C attacks.
 
-Two trigger conditions:
-
-1. The JS-source POC (regimes B + B') lands and shows < 2× win on
-   the proof-loop bench. Means the per-activation IR walk wasn't
-   the bottleneck — proof-loop cost is. Regime C attacks that
-   directly.
-2. The WASM POC stalls on boundary cost dominating for yopl's
-   workload mix. Regime C is a JS-only realization of the same
-   "WAM-style mutate-a-workspace" idea — same architectural
-   leverage as WASM without the JS↔WASM tax. Worth trying before
-   declaring the WAM-style approach dead.
-
-If both POCs succeed (B/B' delivers and WASM delivers), regime C
-is still worth a measurement — it might be the sweet spot for
-workloads that are mostly Prolog-shaped but touch enough JS
-objects to make the WASM boundary unprofitable.
+**Exception**: the LP-specialized unifier is cheap and standalone.
+File as a separable experiment ahead of the regime-C umbrella.
 
 ### Relationship to the WASM backend
 
-WASM is the canonical regime-C realization compiled to a different
-target. The WAM-in-WASM design in
-[`wasm-backend.md`](wasm-backend.md) describes the same
-calling-convention shape — `fn(env_pointer, trail_pointer, args)`,
-binds in place, no return tree — just emitted as WASM rather than
-JS. Sharing applies:
+WASM is a more permissive environment for WAM-classical techniques
+than JS: linear memory works, tagged pointers work, heap-reset
+backtracking works, no GC interference. The WAM-in-WASM design in
+[`wasm-backend.md`](wasm-backend.md) takes advantage of all of
+these. **Regime C in JS does not have to look like the WASM
+backend** — JS's tradeoffs are different, and the prior WAM
+research already established that the WASM-friendly shape doesn't
+JIT well in JS. The two are siblings, not the same design compiled
+to different targets.
 
-- The "plan" representation (head ops + body sequence + var
-  lifetimes) is identical between regime-C JS codegen and
-  regime-C WASM codegen.
-- The pooled-Variable allocator in JS is the analogue of the WAM
-  heap allocator in WASM (`H++` on linear memory).
-- The proof loop shape is the same; one emits JS, the other emits
-  WASM, the third interprets the plan directly.
-
-If regime C ships in JS first, the WASM POC becomes
-"swap-the-backend": same plan, different emitter. Reduces the WASM
-POC's surface area significantly.
+That said, **if** a regime-C JS design and the WASM backend
+converge on a similar plan-IR (head ops + body sequence + var
+lifetimes), the codegen pass can share that intermediate
+representation even if the emitters and the runtimes differ.
 
 ## Out of scope for this POC
 
-- Whole-program codegen (variant C). Per-clause is simpler and
+- Whole-program codegen (variant V3). Per-clause is simpler and
   benchmarks the same hypothesis.
 - `vm.Script` + persistent code cache. Defer until JS-source ships
   and a long-running-process consumer surfaces.
@@ -519,10 +589,12 @@ POC's surface area significantly.
   shared planning concerns (see "Commonalities" above).
 - [`solver-perf.md`](solver-perf.md) — the perf baseline this
   backend has to beat.
+- [`implementation-discipline.md`](implementation-discipline.md) —
+  new-files-only convention for POC work.
 - [`../wiki/Search-feasibility.md`](../wiki/Search-feasibility.md)
   — user-facing motivation (Mitigation 2, yopl-side).
 - `src/compile/lower.js` — the 112-line current lowering, the
-  baseline to beat.
+  baseline to beat. **Untouched by this POC.**
 
 ## Research sources
 

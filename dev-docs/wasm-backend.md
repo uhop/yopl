@@ -14,13 +14,30 @@ that might lower the per-call cost.
 
 In the design-space taxonomy laid out in
 [`js-source-backend.md`](js-source-backend.md) § "Design-space
-taxonomy", this backend is **the canonical regime-C realization**:
-mutate-a-workspace calling convention, no per-activation result-tree
-allocation, Variables drawn from a heap pointer rather than minted
-fresh. Regime C in JS (the "leaner JS runtime" research item) shares
-the architectural shape with this design; the difference is only the
-emission target. If regime C ships in JS first, the WASM POC becomes
-"swap the emitter" rather than a from-scratch build.
+taxonomy", this backend is a **regime-C realization in a permissive
+environment**: linear memory works, tagged pointers work, heap-reset
+backtracking works, no GC interference with the WAM heap. The same
+WAM-classical techniques that prior research found unfruitful in JS
+(see js-source-backend.md § "Regime C — re-imagined runtime
+architecture") map cleanly here. WASM and a regime-C JS design are
+**siblings, not the same design compiled to different targets** —
+the architectural pressures are different enough that the optimal
+shape on each platform is also different. They may share a plan-IR
+upstream of the emitter (head ops + body sequence + var lifetimes)
+if the regime-C JS effort converges on something close to WAM
+shape, but neither requires the other.
+
+**Contract**: per js-source-backend.md § "Input is IR (or source);
+the rules dict is one possible output," the abstract input to any
+new backend is the IR. The current runtime rules-dict shape
+(`{name: [fn, ...]}`) is a convenience the four existing solvers
+share; new backends are not required to produce it. This backend
+doesn't — its output is a WASM module exporting a `solve` entry
+that runs an internal proof loop against linear-memory state. The
+four delivery shapes (sync push, sync pull, async push, async pull)
+must still exist with on-par functionality, but they live as a
+parallel `solversWasm*` family wrapping the WASM module's `solve`
+export, at the same level as the existing four.
 
 ## Constraint: yopl unifies deep6 JS objects, not bare Prolog terms
 
@@ -298,6 +315,9 @@ suite.
 
 - [`compiler-ir.md`](compiler-ir.md) — the IR the WASM backend
   consumes.
+- [`implementation-discipline.md`](implementation-discipline.md) —
+  new-files-only convention for POC work. The `src/wasm/` tree
+  and `src/solvers/wasm.js` are new; existing files stay untouched.
 - [`solver-perf.md`](solver-perf.md) — the perf baseline the WASM
   backend has to beat.
 - [`../wiki/Search-feasibility.md`](../wiki/Search-feasibility.md)
