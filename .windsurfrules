@@ -88,17 +88,7 @@ yopl/
   - `gen.js` — synchronous generator yielding one `Env` per solution.
   - `async.js` — async callback-based driver for `await`-bearing predicates.
   - `asyncGen.js` — async generator combining the two.
-- **Rule compiler** (`src/compile/`) — pure-data IR plus a lowering pass and two
-  tagged-template front-ends. Rules can be written either with the per-clause DSL
-  (`rule(name, arity)(clause\`...\`)` from `yopl/compile/clause`) or with the strict-Prolog
-  whole-program parser (`prolog\`...\`` from `yopl/compile/prolog`); both emit identical IR
-  for the shared subset. The IR has 5 Term kinds + 4 Goal kinds. Lowering substitutes
-  activation-fresh logic Variables; the **`Lit`-walker** descends into plain objects and
-  arrays inside a literal's value, so a template like `Lit({age: Var('A')})` doubles as a
-  pattern matcher and a constructor. The public barrel `yopl/compile` re-exports IR
-  constructors + lowering + validation + `open` / `soft` / `_` / `any` from `deep6` for
-  fine-grained match control. Front-ends emit IR; the runtime never sees IR. Design:
-  `dev-docs/compiler-ir.md`.
+- **Rule compiler** (`src/compile/`) — pure-data IR plus a lowering pass and two tagged-template front-ends. Rules can be written either with the per-clause DSL from `yopl/compile/clause` (the `clause` tag returning one IR `Clause`) or with the strict-Prolog whole-program parser from `yopl/compile/prolog` (the `prolog` tag returning a Rules dict); both emit identical IR for the shared subset. The IR has 5 Term kinds + 4 Goal kinds. Lowering substitutes activation-fresh logic Variables; the `Lit`-walker descends into plain objects and arrays inside a literal's value, so a template like `Lit({age: Var('A')})` doubles as a pattern matcher and a constructor. The public barrel `yopl/compile` re-exports IR constructors + lowering + validation + `open` / `soft` / `_` / `any` from `deep6` for fine-grained match control. Front-ends emit IR; the runtime never sees IR. Design: `dev-docs/compiler-ir.md`.
 - **Rule library** (`src/rules/`) — built-in predicates split by domain:
   - `system.js` — generic logic-programming: helpers (`head`, `term`, `list`, `listHead`,
     `rest`), control (`call`, `cut`, `fail`, `halt`, `isBound`, `not`, `true`, `once`, `eq`,
@@ -110,7 +100,7 @@ yopl/
     Map: `mapEntries`, `mapGet`, `mapHas`. Set: `setItems`, `setHas`. Date: `dateTimestamp`,
     `dateComponents`, `dateComponentsUTC`. Design: `dev-docs/native-objects.md`.
   - `comp.js` — comparisons (`lt`/`le`/`gt`/`ge`, `nz`).
-  - `math.js` — arithmetic (`add`/`sub`/`mul`/`div`/`neg`); each reversible.
+  - `math.js` — arithmetic (`add`/`sub`/`mul`/`div`/`neg`, each reversible); `is/2` arithmetic-expression evaluator; `=:=`/`=\=` arithmetic comparison.
   - `bits.js` — bitwise (`bitAnd`/`bitOr`/`bitXor`/`bitNot`).
   - `logic.js` — boolean logic (`logicalAnd`/`logicalOr`/`logicalXor`/`logicalNot`).
 

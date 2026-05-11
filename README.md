@@ -97,7 +97,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for the development workflow and [AGENT
 
 ## Release history
 
-- 1.4.0 — strict-Prolog tagged-template parser (`prolog\`...\``, `prologClause\`...\``), `prologFile`/`prologFileAsync`loaders, public IR exposure via`yopl/compile{,/clause,/prolog,/prolog/file}` subpaths, opt-in source-map support (`sourceMap: true`), `is/2`arithmetic-expression evaluator +`=:=`/`=\=`arithmetic comparison, fresh per-occurrence`\_` semantics, parity bench, classic Prolog test programs (Hanoi, Wolf/Goat/Cabbage, qsort, Knight's Tour with Warnsdorff, N-queens, Sudoku), EnvMap end-to-end swap (3-6× speedup), solver backtracking-bug fix.
+- 1.4.0 — strict-Prolog tagged-template parser, bugfixes, major perf improvements.
 - 1.3.0 — rule compiler, JS-native predicate library (`Array` / `Map` / `Set` / `Date`), `unifyOpts/3`.
 - 1.2.0 — removed CJS build, restructured tests, added TypeScript typings, simplified list creation, bug fixes and performance improvements, expanded docs and wiki.
 - 1.1.4 — updated dependencies.
