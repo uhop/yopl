@@ -7,7 +7,7 @@
 
 - A small core solver with multiple driver styles: callback, generator, async callback, async generator.
 - A built-in rule library: helpers and control predicates, comparisons, arithmetic, bitwise, boolean logic, and JS-native bridges (Array / Map / Set / Date).
-- A rule compiler with a per-clause tagged-template DSL — write rules declaratively, catch arity drift at compile time.
+- A rule compiler with two tagged-template front-ends — a per-clause DSL (`clause\`...\``) and a strict-Prolog whole-program parser (`prolog\`...\``) — write rules declaratively, catch arity drift at compile time.
 
 Its only runtime dependency is [`deep6`](https://www.npmjs.com/package/deep6), itself a zero-dependency library that provides the unification engine.
 
@@ -55,22 +55,22 @@ solve(rules, 'member', [list, X], env => {
 
 ## Modules
 
-| Module                         | Purpose                                                                                               |
-| ------------------------------ | ----------------------------------------------------------------------------------------------------- |
-| `yopl` (`src/solve.js`)        | Synchronous callback solver — main entry point.                                                       |
-| `yopl/solvers/gen.js`          | Synchronous generator solver.                                                                         |
-| `yopl/solvers/async.js`        | Async callback solver.                                                                                |
-| `yopl/solvers/asyncGen.js`     | Async generator solver.                                                                               |
-| `yopl/compile/clause/index.js` | Per-clause tagged-template DSL: `rule(name, arity)(clause`...`)`.                                     |
-| `yopl/compile/ir.js`           | IR constructors (`Var`, `Lit`, `Compound`, …) + re-exports (`open`, `soft`, `_`).                     |
-| `yopl/compile/lower.js`        | IR → runtime rule functions (incl. the `Lit`-walker for nested IR).                                   |
-| `yopl/compile/validate.js`     | Static-bug-class checks (arity, call-arity, undeclared vars, duplicate rules).                        |
-| `yopl/rules/system.js`         | Generic logic primitives: helpers + `eq`, `notEq`, `unifyOpts`, `not`, `map`, `filter`, type tests, … |
-| `yopl/rules/native.js`         | JS-native bridges: `Array` / `Map` / `Set` / `Date` predicates + type tests (`isArray`, `isMap`, …).  |
-| `yopl/rules/comp.js`           | Comparisons: `lt`, `le`, `gt`, `ge`, `nz`.                                                            |
-| `yopl/rules/math.js`           | Arithmetic: `add`, `sub`, `mul`, `div`, `neg` (each reversible).                                      |
-| `yopl/rules/bits.js`           | Bitwise: `bitAnd`, `bitOr`, `bitXor`, `bitNot`.                                                       |
-| `yopl/rules/logic.js`          | Boolean logic: `logicalAnd`, `logicalOr`, `logicalXor`, `logicalNot`.                                 |
+| Module                     | Purpose                                                                                                                                     |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `yopl` (`src/solve.js`)    | Synchronous callback solver — main entry point.                                                                                             |
+| `yopl/solvers/gen.js`      | Synchronous generator solver.                                                                                                               |
+| `yopl/solvers/async.js`    | Async callback solver.                                                                                                                      |
+| `yopl/solvers/asyncGen.js` | Async generator solver.                                                                                                                     |
+| `yopl/compile`             | IR constructors (`Var`, `Lit`, `Compound`, …) + `lowerRule`/`lowerRules` + `validate`/`validateOrThrow` + `IR` symbol + deep6 re-exports.   |
+| `yopl/compile/clause`      | Per-clause tagged-template DSL: `rule(name, arity)(clause\`...\`)`.                                                                         |
+| `yopl/compile/prolog`      | Strict-Prolog tagged-template parsers: `prolog\`...\``, `prologClause\`...\``.                                                              |
+| `yopl/compile/prolog/file` | Filesystem-backed loaders: `prologFile`, `prologFileAsync` (Node / Bun / Deno).                                                             |
+| `yopl/rules/system.js`     | Generic logic primitives: helpers + `eq`, `notEq`, `unifyOpts`, `not`, `map`, `filter`, type tests, …                                       |
+| `yopl/rules/native.js`     | JS-native bridges: `Array` / `Map` / `Set` / `Date` predicates + type tests (`isArray`, `isMap`, …).                                        |
+| `yopl/rules/comp.js`       | Comparisons: `lt`, `le`, `gt`, `ge`, `nz`.                                                                                                  |
+| `yopl/rules/math.js`       | Arithmetic: `add`, `sub`, `mul`, `div`, `neg` (each reversible); `is/2` arithmetic-expression evaluator; `=:=`/`=\=` arithmetic comparison. |
+| `yopl/rules/bits.js`       | Bitwise: `bitAnd`, `bitOr`, `bitXor`, `bitNot`.                                                                                             |
+| `yopl/rules/logic.js`      | Boolean logic: `logicalAnd`, `logicalOr`, `logicalXor`, `logicalNot`.                                                                       |
 
 Per-module documentation lives in the [wiki](https://github.com/uhop/yopl/wiki).
 
@@ -97,6 +97,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for the development workflow and [AGENT
 
 ## Release history
 
+- 1.4.0 — strict-Prolog tagged-template parser (`prolog\`...\``, `prologClause\`...\``), `prologFile`/`prologFileAsync`loaders, public IR exposure via`yopl/compile{,/clause,/prolog,/prolog/file}` subpaths, opt-in source-map support (`sourceMap: true`), `is/2`arithmetic-expression evaluator +`=:=`/`=\=`arithmetic comparison, fresh per-occurrence`\_` semantics, parity bench, classic Prolog test programs (Hanoi, Wolf/Goat/Cabbage, qsort, Knight's Tour with Warnsdorff, N-queens, Sudoku), EnvMap end-to-end swap (3-6× speedup), solver backtracking-bug fix.
 - 1.3.0 — rule compiler, JS-native predicate library (`Array` / `Map` / `Set` / `Date`), `unifyOpts/3`.
 - 1.2.0 — removed CJS build, restructured tests, added TypeScript typings, simplified list creation, bug fixes and performance improvements, expanded docs and wiki.
 - 1.1.4 — updated dependencies.
