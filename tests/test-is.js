@@ -29,7 +29,7 @@ const callOne = (name, args) => {
   let count = 0;
   solve(allRules, name, args, env => {
     ++count;
-    result = args.map(a => (a && typeof a.isBound === 'function' && a.isBound(env)) ? assemble(a, env) : a);
+    result = args.map(a => (a && typeof a.isBound === 'function' && a.isBound(env) ? assemble(a, env) : a));
   });
   return {count, result};
 };

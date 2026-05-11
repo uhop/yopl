@@ -61,7 +61,7 @@ const gridToArrays = grid => consToArray(grid).map(consToArray);
 const flat = grid => grid.reduce((acc, row) => acc.concat(row), []);
 
 const solvePuzzle = clues => {
-  const cells = clues.map((row, r) => row.map((cell, c) => cell !== null ? cell : v(`r${r}c${c}`)));
+  const cells = clues.map((row, r) => row.map((cell, c) => (cell !== null ? cell : v(`r${r}c${c}`))));
   const grid = makeList(cells.map(row => makeList(row)));
   const solutions = [];
   solve(sudokuRules, 'sudoku', [grid], env => {
@@ -74,10 +74,10 @@ export default [
   function test_sudoku_unique_solution() {
     // 9 clues, leaves 7 unknowns. Unique solution.
     const solutions = solvePuzzle([
-      [1,    2,    null, 4   ],
-      [null, 4,    1,    null],
-      [null, 1,    4,    null],
-      [4,    null, null, 1   ]
+      [1, 2, null, 4],
+      [null, 4, 1, null],
+      [null, 1, 4, null],
+      [4, null, null, 1]
     ]);
     eval(TEST('solutions.length === 1'));
     const expected = [
@@ -91,10 +91,10 @@ export default [
   function test_sudoku_two_solutions() {
     // 8 clues — drop (1,2)=2 from the unique puzzle. Gives 2 solutions.
     const solutions = solvePuzzle([
-      [1,    null, null, 4   ],
-      [null, 4,    1,    null],
-      [null, 1,    4,    null],
-      [4,    null, null, 1   ]
+      [1, null, null, 4],
+      [null, 4, 1, null],
+      [null, 1, 4, null],
+      [4, null, null, 1]
     ]);
     eval(TEST('solutions.length === 2'));
     const allFlat = solutions.map(s => flat(s).join(','));
