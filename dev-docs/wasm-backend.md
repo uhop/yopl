@@ -12,6 +12,16 @@ env push/pop + deep6 unify) makes O(N!) workloads infeasible above
 modest N; a WAM-style WASM backend is one of the speculative levers
 that might lower the per-call cost.
 
+In the design-space taxonomy laid out in
+[`js-source-backend.md`](js-source-backend.md) § "Design-space
+taxonomy", this backend is **the canonical regime-C realization**:
+mutate-a-workspace calling convention, no per-activation result-tree
+allocation, Variables drawn from a heap pointer rather than minted
+fresh. Regime C in JS (the "leaner JS runtime" research item) shares
+the architectural shape with this design; the difference is only the
+emission target. If regime C ships in JS first, the WASM POC becomes
+"swap the emitter" rather than a from-scratch build.
+
 ## Constraint: yopl unifies deep6 JS objects, not bare Prolog terms
 
 A classical WAM-in-WASM Prolog assumes its terms live in WASM linear
