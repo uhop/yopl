@@ -16,3 +16,4 @@ export type {AsyncGoalFn} from '../solve.js';
 declare function generate(rules: Rules, name: string, args: ReadonlyArray<unknown>): AsyncGenerator<Env, void, void>;
 
 export default generate;
+export {generate};

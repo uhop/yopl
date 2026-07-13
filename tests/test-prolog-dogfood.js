@@ -15,7 +15,7 @@
 // position) are out of scope here; they're covered by
 // `test-compile-prolog.js`.
 
-import {rule, clause} from '../src/compile/clause/index.js';
+import {rule, clause} from '../src/compile/clause.js';
 import {prolog} from '../src/compile/prolog/index.js';
 import {IR} from '../src/compile/ir.js';
 import {submit, TEST} from './harness.js';

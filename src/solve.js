@@ -80,3 +80,4 @@ const solve = (rules, name, args, callback) => {
 };
 
 export default solve;
+export {solve};

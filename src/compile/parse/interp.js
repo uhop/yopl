@@ -1,3 +1,4 @@
+// @ts-self-types="./interp.d.ts"
 // Auto-wrap policy for tagged-template interpolation slots.
 //
 // In arg position (head args, list elements, compound args):

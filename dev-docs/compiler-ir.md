@@ -285,7 +285,7 @@ field-by-field, with subset semantics.
 import solve from 'yopl';
 import {variable as v} from 'deep6/unify.js';
 import assemble from 'deep6/traverse/assemble.js';
-import {rule, clause} from 'yopl/compile/clause/index.js';
+import {rule, clause} from 'yopl/compile/clause.js/index.js';
 import {Lit} from 'yopl/compile/ir.js';
 import {lowerRules} from 'yopl/compile/lower.js';
 

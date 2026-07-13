@@ -15,3 +15,4 @@ import type {Rules} from '../solve.js';
 declare function generate(rules: Rules, name: string, args: ReadonlyArray<unknown>): Generator<Env, void, void>;
 
 export default generate;
+export {generate};

@@ -4,7 +4,7 @@ import solve from '../src/solve.js';
 import {Rule, Clause, Var, Wild, Lit, Cons, Compound, Call, Cut, Fail, Js, open, soft, _ as anyVal} from '../src/compile/ir.js';
 import {lowerRules} from '../src/compile/lower.js';
 import {validate, validateOrThrow} from '../src/compile/validate.js';
-import {rule, clause} from '../src/compile/clause/index.js';
+import {rule, clause} from '../src/compile/clause.js';
 import {submit, TEST} from './harness.js';
 import {makeList} from './helpers.js';
 

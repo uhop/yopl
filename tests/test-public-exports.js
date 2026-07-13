@@ -31,7 +31,7 @@ import {
   _,
   any
 } from 'yopl/compile';
-import {rule, clause} from 'yopl/compile/clause';
+import {rule, clause} from 'yopl/compile/clause.js';
 import {prolog, prologClause} from 'yopl/compile/prolog';
 
 import solve from 'yopl';

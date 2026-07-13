@@ -1,3 +1,4 @@
+// @ts-self-types="./expr.d.ts"
 // Pratt-shaped operator-precedence parser over the term grammar.
 // Consumes tokens via the cursor convention; produces Term IR.
 //

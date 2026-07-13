@@ -1,3 +1,4 @@
+// @ts-self-types="./cursor.d.ts"
 // Token cursor — encapsulates position state and advance helpers
 // shared by parser primitives. `values` carries the tagged-template
 // interpolation slot values for use when an `interp` token is consumed.

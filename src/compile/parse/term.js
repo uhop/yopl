@@ -1,3 +1,4 @@
+// @ts-self-types="./term.d.ts"
 // Term-position parsing primitives — Term IR producers consumed by
 // front-end clause / program drivers. Each takes a cursor (see
 // ./cursor.js) and advances it by exactly one term, list, or arg list.

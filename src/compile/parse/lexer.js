@@ -1,3 +1,4 @@
+// @ts-self-types="./lexer.d.ts"
 // Sticky-regex tokenizer shared by all yopl front-ends.
 //
 // One regex alternation per token: the regex engine (V8 Irregexp,

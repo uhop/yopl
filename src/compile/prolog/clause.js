@@ -1,3 +1,4 @@
+// @ts-self-types="./clause.d.ts"
 // Strict-Prolog clause parser. Produces `{name, head: Term[], body: Goal[]}`
 // per parsed clause; multi-clause program parsing happens in ./program.js,
 // and tagged-template entry points in ./index.js.

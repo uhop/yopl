@@ -59,7 +59,7 @@ Async generator solver.
 ## Rule compiler
 
 `yopl/compile/` ships a pure-data IR plus two tagged-template front-ends: a per-clause DSL
-(`yopl/compile/clause`) and a strict-Prolog whole-program parser (`yopl/compile/prolog`).
+(`yopl/compile/clause.js`) and a strict-Prolog whole-program parser (`yopl/compile/prolog`).
 Rules are emitted as IR and lowered into the runtime shape `solve()` expects. The IR has
 5 Term kinds (`var`, `wildcard`, `literal`, `cons`, `compound`) and 4 Goal kinds (`call`,
 `cut`, `fail`, `js`). See `dev-docs/compiler-ir.md` for the design.
@@ -68,9 +68,9 @@ Public subpath exports:
 
 - `yopl/compile` — IR + lowering + validation barrel. The recommended import for IR
   constructors and the lowering / validation passes.
-- `yopl/compile/clause` — per-clause tagged-template DSL.
+- `yopl/compile/clause.js` — per-clause tagged-template DSL.
 - `yopl/compile/prolog` — strict-Prolog tagged-template parsers.
-- `yopl/compile/prolog/file` — filesystem-backed `prologFile(url, options?)` (sync) and `prologFileAsync(url, options?)` (async) loaders for `.pl` files.
+- `yopl/compile/prolog/file.js` — filesystem-backed `prologFile(url, options?)` (sync) and `prologFileAsync(url, options?)` (async) loaders for `.pl` files.
 
 The longer `yopl/compile/<file>.js` paths still resolve (via the wildcard subpath fallback)
 but the three explicit subpaths above are the public surface.
@@ -91,7 +91,7 @@ Re-exported from `ir.js`, `lower.js`, and `validate.js`. IR constructors and hel
   per-value match control on `Lit`-wrapped values. `Lit(open({...}))` locks subset matching;
   `Lit(soft({...}))` extends both sides.
 
-### `yopl/compile/clause`
+### `yopl/compile/clause.js`
 
 Per-clause tagged-template DSL. `rule(name, arity)(...clauses)` returns an IR `Rule`; each
 clause is built via `clause\`HEAD :- BODY\`` (body optional). The clause head is anonymous
@@ -120,7 +120,7 @@ Strict-Prolog tagged-template parsers — multi-clause programs with the head fu
 - `prologClause\`...\`` — single-clause variant; trailing `.` optional. Returns
   `{name, head, body, helpers?}` where `name` is the head functor.
 - `prologFile(url, options?)` and `prologFileAsync(url, options?)` from
-  `yopl/compile/prolog/file` — filesystem-backed convenience loaders that read a `.pl`
+  `yopl/compile/prolog/file.js` — filesystem-backed convenience loaders that read a `.pl`
   file and forward to `prolog(source, options)`. `url` is anything `fs.readFileSync` /
   `fs/promises.readFile` accepts (string path, `URL`, etc.); UTF-8 is assumed. The async
   form is the right default for loading many files in parallel:

@@ -55,31 +55,31 @@ solve(rules, 'member', [list, X], env => {
 
 ## Modules
 
-| Module                     | Purpose                                                                                                                                     |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `yopl` (`src/solve.js`)    | Synchronous callback solver — main entry point.                                                                                             |
-| `yopl/solvers/gen.js`      | Synchronous generator solver.                                                                                                               |
-| `yopl/solvers/async.js`    | Async callback solver.                                                                                                                      |
-| `yopl/solvers/asyncGen.js` | Async generator solver.                                                                                                                     |
-| `yopl/compile`             | IR constructors (`Var`, `Lit`, `Compound`, …) + `lowerRule`/`lowerRules` + `validate`/`validateOrThrow` + `IR` symbol + deep6 re-exports.   |
-| `yopl/compile/clause`      | Per-clause tagged-template DSL: `rule(name, arity)(clause\`...\`)`.                                                                         |
-| `yopl/compile/prolog`      | Strict-Prolog tagged-template parsers: `prolog\`...\``, `prologClause\`...\``.                                                              |
-| `yopl/compile/prolog/file` | Filesystem-backed loaders: `prologFile`, `prologFileAsync` (Node / Bun / Deno).                                                             |
-| `yopl/rules/system.js`     | Generic logic primitives: helpers + `eq`, `notEq`, `unifyOpts`, `not`, `map`, `filter`, type tests, …                                       |
-| `yopl/rules/native.js`     | JS-native bridges: `Array` / `Map` / `Set` / `Date` predicates + type tests (`isArray`, `isMap`, …).                                        |
-| `yopl/rules/comp.js`       | Comparisons: `lt`, `le`, `gt`, `ge`, `nz`.                                                                                                  |
-| `yopl/rules/math.js`       | Arithmetic: `add`, `sub`, `mul`, `div`, `neg` (each reversible); `is/2` arithmetic-expression evaluator; `=:=`/`=\=` arithmetic comparison. |
-| `yopl/rules/bits.js`       | Bitwise: `bitAnd`, `bitOr`, `bitXor`, `bitNot`.                                                                                             |
-| `yopl/rules/logic.js`      | Boolean logic: `logicalAnd`, `logicalOr`, `logicalXor`, `logicalNot`.                                                                       |
+| Module                        | Purpose                                                                                                                                     |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `yopl` (`src/solve.js`)       | Synchronous callback solver — main entry point.                                                                                             |
+| `yopl/solvers/gen.js`         | Synchronous generator solver.                                                                                                               |
+| `yopl/solvers/async.js`       | Async callback solver.                                                                                                                      |
+| `yopl/solvers/asyncGen.js`    | Async generator solver.                                                                                                                     |
+| `yopl/compile`                | IR constructors (`Var`, `Lit`, `Compound`, …) + `lowerRule`/`lowerRules` + `validate`/`validateOrThrow` + `IR` symbol + deep6 re-exports.   |
+| `yopl/compile/clause.js`      | Per-clause tagged-template DSL: `rule(name, arity)(clause\`...\`)`.                                                                         |
+| `yopl/compile/prolog`         | Strict-Prolog tagged-template parsers: `prolog\`...\``, `prologClause\`...\``.                                                              |
+| `yopl/compile/prolog/file.js` | Filesystem-backed loaders: `prologFile`, `prologFileAsync` (Node / Bun / Deno).                                                             |
+| `yopl/rules/system.js`        | Generic logic primitives: helpers + `eq`, `notEq`, `unifyOpts`, `not`, `map`, `filter`, type tests, …                                       |
+| `yopl/rules/native.js`        | JS-native bridges: `Array` / `Map` / `Set` / `Date` predicates + type tests (`isArray`, `isMap`, …).                                        |
+| `yopl/rules/comp.js`          | Comparisons: `lt`, `le`, `gt`, `ge`, `nz`.                                                                                                  |
+| `yopl/rules/math.js`          | Arithmetic: `add`, `sub`, `mul`, `div`, `neg` (each reversible); `is/2` arithmetic-expression evaluator; `=:=`/`=\=` arithmetic comparison. |
+| `yopl/rules/bits.js`          | Bitwise: `bitAnd`, `bitOr`, `bitXor`, `bitNot`.                                                                                             |
+| `yopl/rules/logic.js`         | Boolean logic: `logicalAnd`, `logicalOr`, `logicalXor`, `logicalNot`.                                                                       |
 
-Per-module documentation lives in the [wiki](https://github.com/uhop/yopl/wiki).
+Per-module documentation is in the **[wiki](https://github.com/uhop/yopl/wiki)** &mdash; browse the [index](https://github.com/uhop/yopl/wiki/Home), or [search it](https://uhop.github.io/wiki-search/app/?wiki=uhop/yopl) by name.
 
 ## CommonJS
 
 `yopl` ships as ESM only. CommonJS consumers can use Node's built-in dynamic `import()`:
 
 ```js
-const {default: solve} = await import('yopl');
+const {solve} = await import('yopl');
 ```
 
 A full CJS interop demo lives in `tests/test-cjs.cjs` (run it with `node tests/test-cjs.cjs`).

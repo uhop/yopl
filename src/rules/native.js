@@ -10,7 +10,7 @@
 import {isVariable} from 'deep6/env.js';
 import {unify} from 'deep6/unify.js';
 import {lowerRules} from '../compile/lower.js';
-import {rule, clause} from '../compile/clause/index.js';
+import {rule, clause} from '../compile/clause.js';
 
 export const rules = lowerRules([
   // Type tests for JS-native built-in types.

@@ -193,8 +193,8 @@ void [
   anySentinel
 ];
 
-// ----- yopl/compile/clause -----
-import {rule, clause} from 'yopl/compile/clause';
+// ----- yopl/compile/clause.js -----
+import {rule, clause} from 'yopl/compile/clause.js';
 const _cl: IRClauseType = clause`(X, [X | _])`;
 const _cr: IRRuleType = rule('member', 2)(clause`(X, [X | _])`, clause`(X, [_ | T]) :- member(X, T)`);
 void [_cl, _cr];
@@ -221,8 +221,8 @@ const _pir: PrologIRResult = prolog.with({lower: false})`foo(X).` as PrologIRRes
 const _pcr: PrologClauseResult = prologClause`foo(X)`;
 void [_pt, _pct, _popts, _popd, _pl, _pir, _pcr];
 
-// ----- yopl/compile/prolog/file -----
-import {prologFile, prologFileAsync} from 'yopl/compile/prolog/file';
+// ----- yopl/compile/prolog/file.js -----
+import {prologFile, prologFileAsync} from 'yopl/compile/prolog/file.js';
 
 const _pfile: PrologLoweredResult | PrologIRResult = prologFile('rules.pl');
 const _pfileu = prologFile(new URL('file:///tmp/rules.pl'), {sourceMap: true});

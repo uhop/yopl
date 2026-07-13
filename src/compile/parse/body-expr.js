@@ -1,3 +1,4 @@
+// @ts-self-types="./body-expr.d.ts"
 // Body-context Pratt parser. Parses a clause body as an operator
 // expression using the same Pratt machinery as `parseExpr`, but with
 // a body-aware primary parser that recognizes:

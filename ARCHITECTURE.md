@@ -75,14 +75,14 @@ The `src/solvers/` modules wrap the core in alternative execution styles:
 ### Rule compiler
 
 `src/compile/` provides a pure-data IR plus a lowering pass that turns it into runtime rule
-functions. Two front-ends emit IR — the per-clause tagged-template DSL in `compile/clause/`
+functions. Two front-ends emit IR — the per-clause tagged-template DSL in `compile/clause.js`
 and the strict-Prolog tagged-template parsers in `compile/prolog/` — both producing identical
 IR for the shared subset. Lowering is the only place that knows the runtime rule shape. The
 IR has 5 Term kinds (`var`, `wildcard`, `literal`, `cons`, `compound`) and 4 Goal kinds
 (`call`, `cut`, `fail`, `js`), plus `Clause` and `Rule`.
 
 Three public subpath exports cover the compiler surface: `yopl/compile` (IR + lowering +
-validation barrel), `yopl/compile/clause` (per-clause DSL), `yopl/compile/prolog`
+validation barrel), `yopl/compile/clause.js` (per-clause DSL), `yopl/compile/prolog`
 (strict-Prolog whole-program / single-clause parsers).
 
 The **`Lit`-walker** (in `lower.js`) descends into plain objects and arrays inside a literal's
@@ -140,7 +140,7 @@ src/compile/ir.js          ── deep6/unify.js (open, soft), deep6/env.js (_)
 src/compile/lower.js       ── src/compile/ir.js, src/rules/system-runtime.js (call/cut/fail helpers)
 src/compile/validate.js    ── src/compile/ir.js
 src/compile/index.js       ── src/compile/{ir,lower,validate}.js  (public barrel)
-src/compile/clause/        ── src/compile/ir.js, src/compile/parse/
+src/compile/clause.js      ── src/compile/ir.js, src/compile/parse/
 src/compile/prolog/        ── src/compile/ir.js, src/compile/parse/, src/compile/lower.js
 src/compile/parse/         ── src/compile/ir.js  (lexer + cursor + Pratt + body-expr)
 
@@ -148,7 +148,7 @@ src/rules/system-runtime.js ── deep6/env.js (cut/fail/halt/call leaf module)
 src/rules/system.js        ── deep6/env.js (_, isVariable), deep6/unify.js (unify),
                               src/compile/prolog/, src/rules/system-runtime.js
 src/rules/native.js        ── deep6/env.js (isVariable), deep6/unify.js (unify),
-                              src/compile/lower.js, src/compile/clause/
+                              src/compile/lower.js, src/compile/clause.js
 src/rules/comp.js          ── deep6/env.js (_), src/compile/prolog/
 src/rules/math.js          ── deep6/env.js (_), src/rules/system.js (cut),
                               src/compile/prolog/
@@ -199,13 +199,13 @@ import {
 } from 'yopl/compile';
 
 // Per-clause tagged-template DSL
-import {rule, clause} from 'yopl/compile/clause';
+import {rule, clause} from 'yopl/compile/clause.js';
 
 // Strict-Prolog tagged-template parsers (whole program + single clause)
 import {prolog, prologClause} from 'yopl/compile/prolog';
 
 // Filesystem convenience: load a `.pl` file (sync or async)
-import {prologFile, prologFileAsync} from 'yopl/compile/prolog/file';
+import {prologFile, prologFileAsync} from 'yopl/compile/prolog/file.js';
 
 // Rules — spread to compose
 import {rules as systemRules} from 'yopl/rules/system.js';

@@ -78,3 +78,4 @@ export type SolveCallback = (env: Env) => void;
 declare function solve(rules: Rules, name: string, args: ReadonlyArray<unknown>, callback: SolveCallback): void;
 
 export default solve;
+export {solve};

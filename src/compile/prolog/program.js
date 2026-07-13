@@ -1,3 +1,4 @@
+// @ts-self-types="./program.d.ts"
 // Strict-Prolog program parser. Drains the cursor in a clause-or-directive
 // loop, mutates a local clone of the input operator table on `:- op(...)`
 // directives, and groups clauses by name+arity into IR Rules.

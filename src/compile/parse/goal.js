@@ -1,3 +1,4 @@
+// @ts-self-types="./goal.d.ts"
 // Goal-position parsing primitives — Goal IR producers for clause
 // bodies. Shares the cursor convention of ./term.js.
 

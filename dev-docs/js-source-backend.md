@@ -101,7 +101,7 @@ A new backend's input is one of:
 (`clause\`...\``), or whatever new front-end is convenient — which
 converts to IR via the compiler's existing parse path. No new
 parser needed; source-text consumers reuse `compile/prolog/`,
-`compile/clause/`, and `compile/ir.js`.
+`compile/clause.js`, and `compile/ir.js`.
 
 A new backend's output is **whatever serves its runtime best**.
 The current rules-dict shape is one option (drop-in for the four

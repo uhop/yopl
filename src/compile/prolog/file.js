@@ -11,7 +11,7 @@
 // Deno (Deno via its Node-compat layer); the same module loads
 // unmodified in all three.
 //
-//   import {prologFile, prologFileAsync} from 'yopl/compile/prolog/file';
+//   import {prologFile, prologFileAsync} from 'yopl/compile/prolog/file.js';
 //   const rules = prologFile(new URL('./family.pl', import.meta.url));
 //   const [a, b] = await Promise.all([
 //     prologFileAsync(urlA),

@@ -1,3 +1,4 @@
+// @ts-self-types="./op-table.d.ts"
 // Operator table — parse-time data consumed by the Pratt expression
 // parser. Plain objects with two `Map`s keyed by operator name; one
 // for infix entries, one for prefix entries. A name can have entries

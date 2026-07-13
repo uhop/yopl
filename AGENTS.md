@@ -48,7 +48,7 @@ yopl/
 │   │   ├── lower.js      # IR → runtime rule fns (incl. the Lit-walker)
 │   │   ├── validate.js   # Static-bug-class checks (arity, call-arity, vars, dupes)
 │   │   ├── parse/        # Lexer, cursor, Pratt expr/body-expr parsers (shared)
-│   │   ├── clause/       # Per-clause tagged-template DSL: rule(name, arity)(clause`...`)
+│   │   ├── clause.js     # Per-clause tagged-template DSL: rule(name, arity)(clause`...`)
 │   │   └── prolog/       # Strict-Prolog tagged-template parsers: prolog`...`, prologClause`...`
 │   └── rules/            # Built-in rule library
 │       ├── logic.js      # Logical connectives
@@ -68,13 +68,13 @@ yopl/
 - **ES6 modules** (`"type": "module"` in package.json).
 - **Single runtime dependency.** Only `deep6` is allowed in `dependencies`.
 - **Prettier** for formatting (see `.prettierrc`): 2-space indent, single quotes, semicolons required, no trailing commas.
+- **No narrating comments.** Comments are short _why_-markers only — a non-trivial decision or constraint, an algorithm reference, or explicitly requested JSDoc. Never narrate _what_ the code does.
 
 ## Critical rules
 
 - **ES6 modules.** Use `import`/`export` syntax in source.
 - **Single runtime dependency.** Do not add packages to `dependencies` other than `deep6`.
 - **Do not modify or delete test expectations** without understanding why they changed.
-- **Do not add or remove comments** unless explicitly asked.
 - **Keep `src/` in sync.** Run `npm test` and `npm run lint:fix` after changes.
 
 ## Architecture
@@ -86,7 +86,7 @@ yopl/
   - `gen.js` — synchronous generator yielding one `Env` per solution.
   - `async.js` — async callback-based driver for `await`-bearing predicates.
   - `asyncGen.js` — async generator combining the two.
-- **Rule compiler** (`src/compile/`) — pure-data IR plus a lowering pass and two tagged-template front-ends. Rules can be written either with the per-clause DSL from `yopl/compile/clause` (the `clause` tag returning one IR `Clause`) or with the strict-Prolog whole-program parser from `yopl/compile/prolog` (the `prolog` tag returning a Rules dict); both emit identical IR for the shared subset. The IR has 5 Term kinds + 4 Goal kinds. Lowering substitutes activation-fresh logic Variables; the `Lit`-walker descends into plain objects and arrays inside a literal's value, so a template like `Lit({age: Var('A')})` doubles as a pattern matcher and a constructor. The public barrel `yopl/compile` re-exports IR constructors + lowering + validation + `open` / `soft` / `_` / `any` from `deep6` for fine-grained match control. Front-ends emit IR; the runtime never sees IR. Design: `dev-docs/compiler-ir.md`.
+- **Rule compiler** (`src/compile/`) — pure-data IR plus a lowering pass and two tagged-template front-ends. Rules can be written either with the per-clause DSL from `yopl/compile/clause.js` (the `clause` tag returning one IR `Clause`) or with the strict-Prolog whole-program parser from `yopl/compile/prolog` (the `prolog` tag returning a Rules dict); both emit identical IR for the shared subset. The IR has 5 Term kinds + 4 Goal kinds. Lowering substitutes activation-fresh logic Variables; the `Lit`-walker descends into plain objects and arrays inside a literal's value, so a template like `Lit({age: Var('A')})` doubles as a pattern matcher and a constructor. The public barrel `yopl/compile` re-exports IR constructors + lowering + validation + `open` / `soft` / `_` / `any` from `deep6` for fine-grained match control. Front-ends emit IR; the runtime never sees IR. Design: `dev-docs/compiler-ir.md`.
 - **Rule library** (`src/rules/`) — built-in predicates split by domain:
   - `system.js` — generic logic-programming: helpers (`head`, `term`, `list`, `listHead`,
     `rest`), control (`call`, `cut`, `fail`, `halt`, `isBound`, `not`, `true`, `once`, `eq`,

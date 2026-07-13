@@ -25,7 +25,7 @@ src/compile/prolog/
 └── file.js               ── prologFile / prologFileAsync (Node fs wrapper)
 ```
 
-The `parse/` directory is shared by both front-ends (`compile/clause/`
+The `parse/` directory is shared by both front-ends (`compile/clause.js`
 uses `term.js` + `goal.js`, `compile/prolog/` uses `expr.js` +
 `body-expr.js`) so the lexer, cursor, and op-table are the contract
 that lets the two front-ends emit identical IR for the shared subset.
@@ -325,7 +325,7 @@ form) so source positions carry the URL through to validator issues
 and runtime error reports — caller can override by setting
 `options.file` explicitly.
 
-Lives in its own subpath (`yopl/compile/prolog/file`) so browser
+Lives in its own subpath (`yopl/compile/prolog/file.js`) so browser
 bundles without filesystem access don't pull in `node:fs`. Works in
 Node, Bun, and Deno (Deno via its Node-compat layer).
 

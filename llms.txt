@@ -15,14 +15,14 @@ to `deep6`, yopl's only runtime dependency (a zero-dependency library).
 Three public subpaths under `yopl/compile`:
 
 - `yopl/compile` — IR constructors (`Var`, `Wild`, `Lit`, `Cons`, `Compound`, `List`, `Call`, `Cut`, `Fail`, `Js`, `Clause`, `Rule`), lowering (`lowerRule`, `lowerRules`), validation (`validate`, `validateOrThrow`), the IR-attachment symbol (`IR`), and `deep6` re-exports (`open`, `soft`, `_`, `any`).
-- `yopl/compile/clause` — per-clause tagged-template DSL: `rule(name, arity)(clause\`...\`, ...)`.
+- `yopl/compile/clause.js` — per-clause tagged-template DSL: `rule(name, arity)(clause\`...\`, ...)`.
 - `yopl/compile/prolog` — strict-Prolog tagged-template program/clause parsers: `prolog\`...\``, `prologClause\`...\``.
-- `yopl/compile/prolog/file` — filesystem convenience: `prologFile(url, options?)` (sync) and `prologFileAsync(url, options?)` (async, for parallel loading via `Promise.all`). Both wrap `node:fs` `readFileSync` / `readFile` + `prolog()`. Works in Node, Bun, and Deno.
+- `yopl/compile/prolog/file.js` — filesystem convenience: `prologFile(url, options?)` (sync) and `prologFileAsync(url, options?)` (async, for parallel loading via `Promise.all`). Both wrap `node:fs` `readFileSync` / `readFile` + `prolog()`. Works in Node, Bun, and Deno.
 
 Per-clause form (anonymous head, name supplied externally):
 
 ```js
-import {rule, clause} from 'yopl/compile/clause';
+import {rule, clause} from 'yopl/compile/clause.js';
 import {lowerRules} from 'yopl/compile';
 
 const rules = lowerRules([
@@ -69,4 +69,4 @@ All rule modules export a spreadable `rules` object:
 - A rule body returns an array of terms whose first element is the head and whose remaining
   elements are body goals. A goal is a string, a `{name, args}` term, or an inline
   `(env, goals, stack) => boolean | GoalFrame` function.
-- Prefer the rule compiler (`yopl/compile/clause` for per-clause IR, `yopl/compile/prolog` for whole-program strict-Prolog source) for new rules — both catch static-arity bugs and emit the right `call(...)` wrapping automatically.
+- Prefer the rule compiler (`yopl/compile/clause.js` for per-clause IR, `yopl/compile/prolog` for whole-program strict-Prolog source) for new rules — both catch static-arity bugs and emit the right `call(...)` wrapping automatically.

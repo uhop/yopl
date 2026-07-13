@@ -7,7 +7,7 @@
 // without reaching into individual sub-files.
 //
 // Front-ends (clause, prolog) are NOT re-exported from here — they
-// each live at their own subpath (`yopl/compile/clause`,
+// each live at their own subpath (`yopl/compile/clause.js`,
 // `yopl/compile/prolog`) so consumers only pay the parser cost they
 // actually use. The IR is the contract front-ends and lowering share;
 // importing it from one place keeps that contract obvious.

@@ -83,3 +83,4 @@ function* generate(rules, name, args) {
 }
 
 export default generate;
+export {generate};

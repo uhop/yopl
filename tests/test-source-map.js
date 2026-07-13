@@ -6,8 +6,8 @@
 
 import {tokenize, tokenizeChunk} from '../src/compile/parse/lexer.js';
 import {prolog, prologClause} from 'yopl/compile/prolog';
-import {prologFile, prologFileAsync} from 'yopl/compile/prolog/file';
-import {rule, clause} from 'yopl/compile/clause';
+import {prologFile, prologFileAsync} from 'yopl/compile/prolog/file.js';
+import {rule, clause} from 'yopl/compile/clause.js';
 import {Var, Wild, Lit, Clause, Rule, validate} from 'yopl/compile';
 import {submit, TEST} from './harness.js';
 

@@ -1,6 +1,6 @@
 // Type definitions for yopl — per-clause front-end.
 
-import type {Clause, Rule} from '../ir.js';
+import type {Clause, Rule} from './ir.js';
 
 /**
  * Parse a tagged-template clause source into a `Clause` IR node.

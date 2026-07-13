@@ -4,7 +4,7 @@
 // parsed program is usable. Async tests cover parallel loading via
 // `Promise.all`.
 
-import {prologFile, prologFileAsync} from 'yopl/compile/prolog/file';
+import {prologFile, prologFileAsync} from 'yopl/compile/prolog/file.js';
 import solve from 'yopl';
 import {rules as systemRules} from 'yopl/rules/system.js';
 import {variable as v} from 'deep6/unify.js';

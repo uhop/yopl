@@ -4,7 +4,7 @@ import solve from '../src/solve.js';
 import {rules as nativeRules} from '../src/rules/native.js';
 import {Var, Lit} from '../src/compile/ir.js';
 import {lowerRules} from '../src/compile/lower.js';
-import {rule, clause} from '../src/compile/clause/index.js';
+import {rule, clause} from '../src/compile/clause.js';
 import {submit, TEST} from './harness.js';
 import {makeList} from './helpers.js';
 

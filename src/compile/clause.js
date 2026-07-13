@@ -1,8 +1,8 @@
-// @ts-self-types="./index.d.ts"
+// @ts-self-types="./clause.d.ts"
 //
 // Per-clause front-end: tagged-template syntax for yopl rules.
 //
-//   import {rule, clause} from 'yopl/compile/clause/index.js';
+//   import {rule, clause} from 'yopl/compile/clause.js';
 //
 //   const member = rule('member', 2)(
 //     clause`(X, [X | _])`,
@@ -33,11 +33,11 @@
 // strict-Prolog front-end will share the lexer, cursor, term/goal
 // parsers, and interp-wrap policy via the same imports.
 
-import {Clause as IRClause, Rule as IRRule} from '../ir.js';
-import {tokenize} from '../parse/lexer.js';
-import {makeCursor} from '../parse/cursor.js';
-import {parseArgs} from '../parse/term.js';
-import {parseBody} from '../parse/goal.js';
+import {Clause as IRClause, Rule as IRRule} from './ir.js';
+import {tokenize} from './parse/lexer.js';
+import {makeCursor} from './parse/cursor.js';
+import {parseArgs} from './parse/term.js';
+import {parseBody} from './parse/goal.js';
 
 const parseClauseTokens = (tokens, values) => {
   const cursor = makeCursor(tokens, values);

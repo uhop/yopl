@@ -21,3 +21,4 @@ export type AsyncSolveCallback = (env: Env) => void | Promise<void>;
 declare function solve(rules: Rules, name: string, args: ReadonlyArray<unknown>, callback: AsyncSolveCallback): Promise<void>;
 
 export default solve;
+export {solve};

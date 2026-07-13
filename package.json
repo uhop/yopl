@@ -8,9 +8,7 @@
   "exports": {
     ".": "./src/solve.js",
     "./compile": "./src/compile/index.js",
-    "./compile/clause": "./src/compile/clause/index.js",
     "./compile/prolog": "./src/compile/prolog/index.js",
-    "./compile/prolog/file": "./src/compile/prolog/file.js",
     "./*": "./src/*"
   },
   "scripts": {
@@ -57,15 +55,11 @@
     "url": "https://github.com/uhop/yopl/issues"
   },
   "homepage": "https://github.com/uhop/yopl#readme",
-  "llms": "https://raw.githubusercontent.com/uhop/yopl/master/llms.txt",
-  "llmsFull": "https://raw.githubusercontent.com/uhop/yopl/master/llms-full.txt",
   "files": [
     "src",
     "skills",
     "llms.txt",
-    "llms-full.txt",
-    "AGENTS.md",
-    "ARCHITECTURE.md"
+    "llms-full.txt"
   ],
   "dependencies": {
     "deep6": "^1.4.0"
