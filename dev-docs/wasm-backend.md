@@ -93,13 +93,13 @@ dominates.
 
 For yopl this is the load-bearing number. The proof loop is
 millions of small operations; the boundary tax has to amortize over
-the *query*, not the *call*. That means: one big copy-in at query
+the _query_, not the _call_. That means: one big copy-in at query
 entry, one big copy-out at extraction, everything else stays inside
 the module.
 
-**`SharedArrayBuffer`** is *not* the right primitive for "pass JS
+**`SharedArrayBuffer`** is _not_ the right primitive for "pass JS
 objects into WASM cheaply." SAB is about sharing memory between
-*agents* (Workers, multi-threaded WASM); it doesn't make a JS object
+_agents_ (Workers, multi-threaded WASM); it doesn't make a JS object
 addressable from WASM. Status as of 2026: Node.js works freely;
 browsers need `Cross-Origin-Embedder-Policy: require-corp` +
 `Cross-Origin-Opener-Policy: same-origin` headers; standardized.
@@ -119,17 +119,17 @@ regime 2 above.
 
 WAM operations and their WASM mappings:
 
-| WAM operation | WASM mechanism | WASM availability |
-| --- | --- | --- |
-| Tagged cell (REF/STR/CON/LIS/INT) | Tag in low 2-3 bits of `i32`; `i32.and` + shift to deref | MVP |
-| Heap (H register), trail, PDL, E/B stacks | Linear-memory regions; pointer = `i32` offset | MVP |
-| Predicate dispatch | `call_indirect` via function table | MVP |
-| First-argument indexing (`switch_on_term`) | `br_table` on the principal-functor tag | MVP |
+| WAM operation                              | WASM mechanism                                                              | WASM availability      |
+| ------------------------------------------ | --------------------------------------------------------------------------- | ---------------------- |
+| Tagged cell (REF/STR/CON/LIS/INT)          | Tag in low 2-3 bits of `i32`; `i32.and` + shift to deref                    | MVP                    |
+| Heap (H register), trail, PDL, E/B stacks  | Linear-memory regions; pointer = `i32` offset                               | MVP                    |
+| Predicate dispatch                         | `call_indirect` via function table                                          | MVP                    |
+| First-argument indexing (`switch_on_term`) | `br_table` on the principal-functor tag                                     | MVP                    |
 | try/retry/trust (alternative-clause chain) | Stored B (choice-point); on backtrack `return_call_indirect` to next clause | **tail-call proposal** |
-| Cut | Store B at clause entry; restore via `i32.store` | MVP |
-| **Last-call optimization (`execute`)** | **`return_call_indirect`** | **tail-call proposal** |
-| Unification work loop | `loop` + `br_if` over a PDL on linear memory | MVP |
-| Heap reclamation | Reset H/TR to a saved value on backtrack | MVP — no GC needed |
+| Cut                                        | Store B at clause entry; restore via `i32.store`                            | MVP                    |
+| **Last-call optimization (`execute`)**     | **`return_call_indirect`**                                                  | **tail-call proposal** |
+| Unification work loop                      | `loop` + `br_if` over a PDL on linear memory                                | MVP                    |
+| Heap reclamation                           | Reset H/TR to a saved value on backtrack                                    | MVP — no GC needed     |
 
 Every WAM operation maps to a current WASM opcode. The only
 post-MVP feature on the critical path is **tail calls**
@@ -141,14 +141,14 @@ WASM call stack; with them, `execute` is a literal
 
 Tail-call runtime support (early 2026):
 
-| Runtime | Engine | Status |
-| --- | --- | --- |
-| Node.js | V8 | Shipped (V8 v11.2, 2023) |
-| Deno | V8 | Shipped (inherits V8) |
-| Bun | JavaScriptCore | Shipped (JSC added it for Safari 2024) |
-| Chrome / Edge | V8 | Shipped |
-| Safari | JSC | Shipped (2024) |
-| Firefox | SpiderMonkey | Tracked, not yet shipped |
+| Runtime       | Engine         | Status                                 |
+| ------------- | -------------- | -------------------------------------- |
+| Node.js       | V8             | Shipped (V8 v11.2, 2023)               |
+| Deno          | V8             | Shipped (inherits V8)                  |
+| Bun           | JavaScriptCore | Shipped (JSC added it for Safari 2024) |
+| Chrome / Edge | V8             | Shipped                                |
+| Safari        | JSC            | Shipped (2024)                         |
+| Firefox       | SpiderMonkey   | Tracked, not yet shipped               |
 
 Node + Deno + Bun all clear; Safari/Chrome/Edge clear. Firefox is the
 lone laggard. Not a blocker for yopl's POC — the canonical platform
@@ -166,12 +166,12 @@ managed-heap (`struct`/`array`) features.
 
 ## Code generation — four paths
 
-| Path | Dependency | Trade-off |
-| --- | --- | --- |
+| Path                         | Dependency                                  | Trade-off                                                                                                              |
+| ---------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | **A. Hand-roll WASM binary** | None (`new WebAssembly.Module(uint8array)`) | Smallest dep footprint; ~500-1000 lines of straightforward byte emission; matches yopl's "single runtime dep" identity |
-| **B. WAT (text) + wabt-js** | `wabt` (~1.5 MB) | Easier to debug (text format is human-readable); useful during development; not what ships |
-| **C. binaryen.js** | `binaryen` (~3 MB) | Higher-level builder API + optimizer (`-O3` competitive with hand-tuned); useful if optimizer wins back its weight |
-| **D. AssemblyScript / Rust** | Toolchain | Wrong shape — we have an IR, we want IR → WASM, not IR → high-level-language → WASM |
+| **B. WAT (text) + wabt-js**  | `wabt` (~1.5 MB)                            | Easier to debug (text format is human-readable); useful during development; not what ships                             |
+| **C. binaryen.js**           | `binaryen` (~3 MB)                          | Higher-level builder API + optimizer (`-O3` competitive with hand-tuned); useful if optimizer wins back its weight     |
+| **D. AssemblyScript / Rust** | Toolchain                                   | Wrong shape — we have an IR, we want IR → WASM, not IR → high-level-language → WASM                                    |
 
 Plan: **B during development**, **A at ship**. Path B gets the
 semantics correct faster (read the WAT with eyes, validate via

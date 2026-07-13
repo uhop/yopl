@@ -70,12 +70,12 @@ of the same clause don't share binding-storage keys).
 
 Four regimes:
 
-| Regime | Approach | Where it lives |
-| --- | --- | --- |
-| **A. Status quo** | Per-activation IR walk via `lower.js` closure factory | `lower.js` today |
-| **B. Codegen** | Pre-specialize the per-activation walk via `new Function` | This POC |
-| **B'. Codegen + constant-output** | B plus shared-constant return for ground clauses | Standalone analysis pass; add to POC |
-| **C. Re-imagined runtime** | Architecture change — different rule-fn shape, possibly different proof loop, possibly different unifier. The "outlandish JS-based alternative runtime" queue item | Major redesign; see below |
+| Regime                            | Approach                                                                                                                                                           | Where it lives                       |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------ |
+| **A. Status quo**                 | Per-activation IR walk via `lower.js` closure factory                                                                                                              | `lower.js` today                     |
+| **B. Codegen**                    | Pre-specialize the per-activation walk via `new Function`                                                                                                          | This POC                             |
+| **B'. Codegen + constant-output** | B plus shared-constant return for ground clauses                                                                                                                   | Standalone analysis pass; add to POC |
+| **C. Re-imagined runtime**        | Architecture change — different rule-fn shape, possibly different proof loop, possibly different unifier. The "outlandish JS-based alternative runtime" queue item | Major redesign; see below            |
 
 A → B is a codegen change. B → B' is an analysis pass. B' → C is a
 broader architecture change that propagates beyond `lower.js`. Each
@@ -98,10 +98,10 @@ A new backend's input is one of:
 
 - The **IR** directly (5 Term + 4 Goal kinds + Clause + Rule), or
 - **Source text** — Prolog (`prolog\`...\``), per-clause
-  (`clause\`...\``), or whatever new front-end is convenient — which
-  converts to IR via the compiler's existing parse path. No new
-  parser needed; source-text consumers reuse `compile/prolog/`,
-  `compile/clause/`, and `compile/ir.js`.
+(`clause\`...\``), or whatever new front-end is convenient — which
+converts to IR via the compiler's existing parse path. No new
+parser needed; source-text consumers reuse `compile/prolog/`,
+`compile/clause/`, and `compile/ir.js`.
 
 A new backend's output is **whatever serves its runtime best**.
 The current rules-dict shape is one option (drop-in for the four
@@ -177,33 +177,28 @@ refers to **which** of the four design-space points the POC sits at.)
 
 Four shapes considered for IR → JS source:
 
-| Variant | Function shape | Trade-off |
-| --- | --- | --- |
-| **V1. eval'd closures, same shape as today** | `eval` returns the same closure factory `lower.js` produces, just from source text | No win — V8 sees the same shape either way; `eval` overhead negates it |
-| **V2. Per-clause `new Function`, head/body inlined** | One `new Function(...vars, body)` per clause; head args constructed as literal expressions; body goals emitted inline | Best win/effort ratio. **Default.** |
-| **V3. Whole rules dict → one module** | Emit a JS module string; load via dynamic `import()` of a `data:` or `blob:` URL | Async load; full module scoping; bundler-unfriendly; deferred |
-| **V4. `new Function` returning an array literal** | Like V2, but the whole body is one `return [...]` expression with no statements | Marginally smaller; V8 likely inlines either way; not worth the syntactic constraint |
+| Variant                                              | Function shape                                                                                                        | Trade-off                                                                            |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| **V1. eval'd closures, same shape as today**         | `eval` returns the same closure factory `lower.js` produces, just from source text                                    | No win — V8 sees the same shape either way; `eval` overhead negates it               |
+| **V2. Per-clause `new Function`, head/body inlined** | One `new Function(...vars, body)` per clause; head args constructed as literal expressions; body goals emitted inline | Best win/effort ratio. **Default.**                                                  |
+| **V3. Whole rules dict → one module**                | Emit a JS module string; load via dynamic `import()` of a `data:` or `blob:` URL                                      | Async load; full module scoping; bundler-unfriendly; deferred                        |
+| **V4. `new Function` returning an array literal**    | Like V2, but the whole body is one `return [...]` expression with no statements                                       | Marginally smaller; V8 likely inlines either way; not worth the syntactic constraint |
 
 **Variant V2** is the right default. The generated function for
 `member(X, [X | _])` would look like:
 
 ```js
-new Function('X', 'argN',  // varNames + sys passed positionally
-  'return [' +
-    '{args: [X, {value: X, next: variable()}]}' +
-  '];'
+new Function(
+  'X',
+  'argN', // varNames + sys passed positionally
+  'return [' + '{args: [X, {value: X, next: variable()}]}' + '];'
 );
 ```
 
 And for `member(X, [_ | T]) :- member(X, T)`:
 
 ```js
-new Function('X', 'T', 'argN',
-  'return [' +
-    '{args: [X, {value: variable(), next: T}]}, ' +
-    '{name: "member", args: [X, T]}' +
-  '];'
-);
+new Function('X', 'T', 'argN', 'return [' + '{args: [X, {value: variable(), next: T}]}, ' + '{name: "member", args: [X, T]}' + '];');
 ```
 
 Compared to the closure factory `lower.js` produces today, V2:
@@ -285,12 +280,13 @@ This is **a standalone optimization independent of the JS-source
 codegen** — could land as its own POC. Per
 [`implementation-discipline.md`](implementation-discipline.md), it
 lives as a new module (e.g., `src/compile/analysis/constant-output.js`
-+ a new lowering entrypoint that consumes it), **not as edits to
-`lower.js`**. The existing closure-factory path stays untouched as
-the baseline. Worth measuring during the POC: **how much of yopl's
-representative workload is constant-output?** If 30%+ of clause
-activations land in that class, B' is a meaningful win on its own.
-If < 10%, it's a footnote.
+
+- a new lowering entrypoint that consumes it), **not as edits to
+  `lower.js`**. The existing closure-factory path stays untouched as
+  the baseline. Worth measuring during the POC: **how much of yopl's
+  representative workload is constant-output?** If 30%+ of clause
+  activations land in that class, B' is a meaningful win on its own.
+  If < 10%, it's a footnote.
 
 There's also a partial variant: a clause whose **`Lit` values
 contain no IR** but whose head/body has `Var`s elsewhere can have
@@ -304,16 +300,16 @@ emitter.
 This is the big architectural advantage over the WASM backend.
 **The proof loop, drivers, and runtime stay unchanged.**
 
-| Component | Lives in | Touched by JS-source codegen? |
-| --- | --- | --- |
-| `prove(rules, goals, env)` | `src/solve.js:14-74` | **No** — same proof loop, same algorithm, same env push/pop, same unify call |
-| `solve(rules, name, args, callback)` | `src/solve.js:75-80` | No — push driver, unchanged |
-| `solversGen` (pull) | `src/solvers/gen.js` | No |
-| `solversAsync` / `solversAsyncGen` | `src/solvers/async*.js` | No |
-| `generateVariables(count)` | All four solvers | No — Variable allocation owned by proof loop |
-| `EnvMap` / unify / sentinels | deep6 | No |
-| Rules dict shape (`{name: [fn1, fn2, ...]}`) | Calling convention | **No** — emitted functions are call-compatible with what `lower.js` produces today |
-| Rule function calling convention (`(...vars) => [head, ...body]`) | `lower.js`'s output | **Compatible** — emitted functions have the same `(positional vars) → [{args}, ...goals]` shape |
+| Component                                                         | Lives in                | Touched by JS-source codegen?                                                                   |
+| ----------------------------------------------------------------- | ----------------------- | ----------------------------------------------------------------------------------------------- |
+| `prove(rules, goals, env)`                                        | `src/solve.js:14-74`    | **No** — same proof loop, same algorithm, same env push/pop, same unify call                    |
+| `solve(rules, name, args, callback)`                              | `src/solve.js:75-80`    | No — push driver, unchanged                                                                     |
+| `solversGen` (pull)                                               | `src/solvers/gen.js`    | No                                                                                              |
+| `solversAsync` / `solversAsyncGen`                                | `src/solvers/async*.js` | No                                                                                              |
+| `generateVariables(count)`                                        | All four solvers        | No — Variable allocation owned by proof loop                                                    |
+| `EnvMap` / unify / sentinels                                      | deep6                   | No                                                                                              |
+| Rules dict shape (`{name: [fn1, fn2, ...]}`)                      | Calling convention      | **No** — emitted functions are call-compatible with what `lower.js` produces today              |
+| Rule function calling convention (`(...vars) => [head, ...body]`) | `lower.js`'s output     | **Compatible** — emitted functions have the same `(positional vars) → [{args}, ...goals]` shape |
 
 The only change is `src/compile/lower.js`'s output shape: instead
 of closures over IR, emitted functions. The proof loop calls them
@@ -345,16 +341,16 @@ the four delivery shapes.
 
 Both backends emit code from the same IR. The shared work:
 
-| Shared concern | Current state | Could move to a shared module |
-| --- | --- | --- |
-| **Variable scope analysis** | `collectVars(clause)` in `ir.js` | Already shared. Both backends consume |
-| **Head-pattern normalization** | `lowerTerm` walks per activation | Extractable: a "head-arg-construction plan" — a sequence of (allocate variable, build cons cell, build compound, embed literal) ops. JS-source emits as expression text; WASM emits as `i32.store` ops. Same plan |
-| **Body-goal sequencing** | `lowerGoal` walks per activation | Extractable: a "body-goal plan" — a sequence of (call rule, cut, fail, inline-js) entries. JS-source emits as object literals; WASM emits as `call_indirect` ops |
-| **`Lit`-walker** | `lowerLitValue` in `lower.js` | Hardest to share. JS-source can emit literal expressions for static portions; WASM has to either pre-translate to linear-memory cells at query entry or hold via `externref`. Diverges |
-| **Source-position threading** | `clause.source: {file?, line, col}` on Clause IR | Already shared. JS-source emits `//# sourceURL=` or a source-map blob; WASM emits a `.debug_*` custom section. Same input |
-| **Validation** | `validate.js` (arity-mismatch, undeclared-var, etc.) | Already shared. Pre-codegen |
-| **The IR itself** | `ir.js` (5 Term + 4 Goal kinds + Clause + Rule) | Already shared. **The whole point** |
-| **Variable lifetime analysis** (first-use / last-use / dead vars) | Not done today | Both backends benefit. JS-source could elide vars in single-use positions; WASM could reuse heap cells. Worth doing once, in a shared analysis pass |
+| Shared concern                                                    | Current state                                        | Could move to a shared module                                                                                                                                                                                     |
+| ----------------------------------------------------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Variable scope analysis**                                       | `collectVars(clause)` in `ir.js`                     | Already shared. Both backends consume                                                                                                                                                                             |
+| **Head-pattern normalization**                                    | `lowerTerm` walks per activation                     | Extractable: a "head-arg-construction plan" — a sequence of (allocate variable, build cons cell, build compound, embed literal) ops. JS-source emits as expression text; WASM emits as `i32.store` ops. Same plan |
+| **Body-goal sequencing**                                          | `lowerGoal` walks per activation                     | Extractable: a "body-goal plan" — a sequence of (call rule, cut, fail, inline-js) entries. JS-source emits as object literals; WASM emits as `call_indirect` ops                                                  |
+| **`Lit`-walker**                                                  | `lowerLitValue` in `lower.js`                        | Hardest to share. JS-source can emit literal expressions for static portions; WASM has to either pre-translate to linear-memory cells at query entry or hold via `externref`. Diverges                            |
+| **Source-position threading**                                     | `clause.source: {file?, line, col}` on Clause IR     | Already shared. JS-source emits `//# sourceURL=` or a source-map blob; WASM emits a `.debug_*` custom section. Same input                                                                                         |
+| **Validation**                                                    | `validate.js` (arity-mismatch, undeclared-var, etc.) | Already shared. Pre-codegen                                                                                                                                                                                       |
+| **The IR itself**                                                 | `ir.js` (5 Term + 4 Goal kinds + Clause + Rule)      | Already shared. **The whole point**                                                                                                                                                                               |
+| **Variable lifetime analysis** (first-use / last-use / dead vars) | Not done today                                       | Both backends benefit. JS-source could elide vars in single-use positions; WASM could reuse heap cells. Worth doing once, in a shared analysis pass                                                               |
 
 **Refactor opportunity**: extract `lower.js` into two layers:
 
@@ -496,15 +492,15 @@ design space is genuinely open.
 Each of these is independently movable; a regime-C experiment picks
 one or two to vary and holds the rest fixed:
 
-| Dimension | Current (regime A) | Alternative |
-| --- | --- | --- |
-| **Unifier** | `deep6.unify` — fully general-purpose | LP-specialized: only the IR shapes (Var, Cons, Compound, Lit-of-primitive, atoms-as-strings); narrower dispatch, no circular/open/soft path on the hot loop |
-| **Env / bindings** | `EnvMap` (Map per frame; push/pop snapshots) | Trail array of `[name, prevValue]` pairs; flat typed-array with a pointer; pool by depth |
-| **Variable instances** | Minted per activation by `generateVariables(count)` | Pre-allocated pool keyed by clause-id + activation-depth; reused after `env.pop` |
-| **Rule fn shape** | `(...vars) → [{args}, ...goals]` (returns tree) | Mutates-in-place + continuation; or yields a generator of solutions; or emits bytecode |
-| **Goal sequencing** | Array of `{name, args}` objects walked by `goals.index` | `Int32Array` of opcodes the proof loop dispatches via a single big switch; or explicit Goal-graph traversal |
-| **Proof loop** | Explicit-stack iterative in `solve.js`'s `prove` | Same shape with smaller frames; or trampolined; or split sync-fast-path + async-slow-path |
-| **Choice points** | Implicit (frames on the stack) | Explicit choice-point objects with stored continuation |
+| Dimension              | Current (regime A)                                      | Alternative                                                                                                                                                 |
+| ---------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Unifier**            | `deep6.unify` — fully general-purpose                   | LP-specialized: only the IR shapes (Var, Cons, Compound, Lit-of-primitive, atoms-as-strings); narrower dispatch, no circular/open/soft path on the hot loop |
+| **Env / bindings**     | `EnvMap` (Map per frame; push/pop snapshots)            | Trail array of `[name, prevValue]` pairs; flat typed-array with a pointer; pool by depth                                                                    |
+| **Variable instances** | Minted per activation by `generateVariables(count)`     | Pre-allocated pool keyed by clause-id + activation-depth; reused after `env.pop`                                                                            |
+| **Rule fn shape**      | `(...vars) → [{args}, ...goals]` (returns tree)         | Mutates-in-place + continuation; or yields a generator of solutions; or emits bytecode                                                                      |
+| **Goal sequencing**    | Array of `{name, args}` objects walked by `goals.index` | `Int32Array` of opcodes the proof loop dispatches via a single big switch; or explicit Goal-graph traversal                                                 |
+| **Proof loop**         | Explicit-stack iterative in `solve.js`'s `prove`        | Same shape with smaller frames; or trampolined; or split sync-fast-path + async-slow-path                                                                   |
+| **Choice points**      | Implicit (frames on the stack)                          | Explicit choice-point objects with stored continuation                                                                                                      |
 
 ### What might genuinely work in JS that didn't in classical WAM
 
