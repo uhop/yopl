@@ -23,6 +23,7 @@ import isTests from './test-is.js';
 import knightTests from './test-knight.js';
 import queensTests from './test-queens.js';
 import sudokuTests from './test-sudoku.js';
+import authzTests from './test-authz.js';
 
 runAllTests([
   ...solveTests,
@@ -47,5 +48,6 @@ runAllTests([
   ...isTests,
   ...knightTests,
   ...queensTests,
-  ...sudokuTests
+  ...sudokuTests,
+  ...authzTests
 ]);

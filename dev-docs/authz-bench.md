@@ -1,8 +1,9 @@
 # Authorization-check bench app (Zanzibar-style)
 
-Status: **specified 2026-07-13; not started.** The **judge workload** for the
-optimization experiments (specialized LP-unifier, constant-output classifier)
-and the first realistic showcase app. Companion:
+Status: **implemented 2026-07-14; baseline measured, experiment variants
+pending.** The **judge workload** for the optimization experiments
+(specialized LP-unifier, constant-output classifier) and the first realistic
+showcase app. Companion:
 [js-source-backend.md](js-source-backend.md) (the regime map),
 [implementation-discipline.md](implementation-discipline.md) (POC file rules).
 
@@ -84,6 +85,30 @@ dominate nano-bench noise.
 4. **Attribution variants** — a no-op native predicate build (isolates
    native-dispatch cost) and, if needed, a precomputed-terms build (splits
    goal-construction from unify time).
+
+### Baseline (measured 2026-07-14, default org: 300 users / 40 groups / 1500 docs / 4000 tuples)
+
+| Variant        | Median  |
+| -------------- | ------- |
+| checkDirect    | 5.51 μs |
+| checkGroup     | 189 μs  |
+| checkInherited | 188 μs  |
+| checkImplied   | 353 μs  |
+| checkDenial    | 735 μs  |
+| checkMix       | 455 μs  |
+
+The predicted shape holds: the ground-verify fast path makes direct grants
+~130× cheaper than denials, and the mix is dominated by denial backtracking —
+exactly the hot proof loop the experiments target.
+
+**Finding — no list-all bench variant.** "List all docs U can view"
+(unbound-O enumeration) is super-quadratic in org size: without tabling, the
+inheritance clause re-proves each parent edge independently while per-object
+tuple density grows alongside edge count (measured 90 ms → 3.4 s over an 8×
+org scale-up; the default org extrapolates to a minute-plus per drain). This
+is inherent to naive backward-chaining enumeration — Zanzibar itself uses
+reverse expansion for this query. Generative modes stay covered functionally
+by `tests/test-authz.js` on a small fixed org.
 
 ## What it decides
 
