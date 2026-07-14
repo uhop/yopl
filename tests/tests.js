@@ -24,6 +24,7 @@ import knightTests from './test-knight.js';
 import queensTests from './test-queens.js';
 import sudokuTests from './test-sudoku.js';
 import authzTests from './test-authz.js';
+import unifyLPTests from './test-unify-lp.js';
 
 runAllTests([
   ...solveTests,
@@ -49,5 +50,6 @@ runAllTests([
   ...knightTests,
   ...queensTests,
   ...sudokuTests,
-  ...authzTests
+  ...authzTests,
+  ...unifyLPTests
 ]);

@@ -1,7 +1,7 @@
 # Authorization-check bench app (Zanzibar-style)
 
-Status: **implemented 2026-07-14; baseline measured, experiment variants
-pending.** The **judge workload** for the optimization experiments
+Status: **implemented 2026-07-14; baseline + LP-unifier measured (positive),
+B′ pending.** The **judge workload** for the optimization experiments
 (specialized LP-unifier, constant-output classifier) and the first realistic
 showcase app. Companion:
 [js-source-backend.md](js-source-backend.md) (the regime map),
@@ -108,6 +108,40 @@ comparing runs) instead of re-measuring the baseline. Comparison runs pin
 `-i 500` — with auto-calibrated batches, the `i % length` query cycling would
 measure a build-dependent subset of the workload — and experiment bench files
 must export the same variant names so the comparison pairs them.
+
+### +LP-unifier (measured 2026-07-14) — positive result
+
+Experiment files per implementation-discipline.md: `src/unify-lp.js` (~90
+lines), solver entries `src/solve-lp.js` and `src/solvers/gen-lp.js`,
+cross-validation `tests/test-unify-lp.js`, benches `bench/bench-proof-loop-lp.js`
+and `bench/authz/bench-authz-lp.js`. Baselines untouched. All runs recorded
+back-to-back (`nano-bench-compare`, Mann–Whitney, all pairs significant,
+Cliff's δ large):
+
+| Surface              | Variant range     | checkMix   |
+| -------------------- | ----------------- | ---------- |
+| authz mix (`-i 500`) | 24.3–27.8% faster | **+26.4%** |
+| proof-loop (classic) | 11.6–31.1% faster | —          |
+
+So the realistic FFI-backed mix runs ~1.26× faster end-to-end from swapping
+the proof loop's inner unify alone — natives and goal construction untouched.
+Against the queue's "unifier itself 2–3× faster" estimate this is consistent:
+the end-to-end gain is the unifier share of per-activation cost, and it says
+unify was a substantial fraction of the check workload (regime-B/C input:
+unify matters even when facts live behind natives).
+
+**Traversal-order finding.** The first LP cut iterated args left-to-right and
+lost 22–46% to the baseline on the member workloads despite being cheaper per
+pair: deep6's LIFO worklist tests the _last_ head arg first, and clause heads
+conventionally put the discriminating arg last, so left-to-right paid the
+structural bindings before hitting the cheap failure. Mirroring deep6's
+reverse order (arrays and object keys) flipped every workload to a win —
+evaluation order is as load-bearing as per-pair cost. A forward `for-in`
+object walk (allocation-free) was also tried and measured decisively slower
+than reversed `Object.keys` on member workloads.
+
+Saved runs: `bench/authz/results/2026-07-14-lp-unifier.json`,
+`bench/results/2026-07-14-proof-loop-{baseline,lp}.json`.
 
 **Finding — no list-all bench variant.** "List all docs U can view"
 (unbound-O enumeration) is super-quadratic in org size: without tabling, the
