@@ -1,9 +1,9 @@
 # Authorization-check bench app (Zanzibar-style)
 
-Status: **implemented 2026-07-14; baseline + LP-unifier measured (positive),
-B′ pending.** The **judge workload** for the optimization experiments
-(specialized LP-unifier, constant-output classifier) and the first realistic
-showcase app. Companion:
+Status: **implemented 2026-07-14; all planned measurements done — baseline,
+LP-unifier (positive), B′ (retired).** The **judge workload** for the
+optimization experiments (specialized LP-unifier, constant-output classifier)
+and the first realistic showcase app. Companion:
 [js-source-backend.md](js-source-backend.md) (the regime map),
 [implementation-discipline.md](implementation-discipline.md) (POC file rules).
 
@@ -142,6 +142,35 @@ than reversed `Object.keys` on member workloads.
 
 Saved runs: `bench/authz/results/2026-07-14-lp-unifier.json`,
 `bench/results/2026-07-14-proof-loop-{baseline,lp}.json`.
+
+### +B′ (measured 2026-07-14) — retired, prediction confirmed
+
+Artifacts per implementation-discipline.md: the ~40-line classifier
+`src/compile/analysis/constant-output.js` (a clause is constant-output iff no
+vars/wildcards anywhere including inside `Lit` values, and only static-name
+calls / `fail` in the body — `cut` reads the per-activation sys frame and
+`js` factories mint per-activation closures, so both exclude), the B′
+lowering entrypoint `src/compile/lower-const.js` (shared terms tree for
+constant clauses, same surface as `lower.js`), and
+`tests/test-lower-const.js`. Baseline `lower.js` untouched.
+
+Measured fractions (instrumented activation counts over the default org's
+3200-query mix):
+
+- **Activation fraction: 4.88%** — 16,825 of 344,937 clause activations hit
+  the two `implies` facts, the only constant-output clauses in the rule base
+  (2/16 static). Below the regime map's <10% "footnote" line; even free
+  construction for those activations bounds the end-to-end win at ~1–2%, so
+  **no B′ bench variant is built and B′ retires** at the cost of its
+  classifier, exactly as predicted 2026-07-13: FFI-backed facts leave almost
+  nothing clause-borne to share.
+- Built-in library static fraction is equally thin: 4/73 clauses
+  (`true`, `conjunction(null)`, `neg`'s ground identity, `bitNot`'s).
+- Attribution bonus: `tuple` + `tupleIn` + `memberOf` carry ~84% of all
+  activations (`tuple` 35.8%, `tupleIn` 29.8%, `memberOf` 18.4%) — the
+  workload is scan-and-walk dominated, confirming the FFI-shape hypothesis
+  and pointing regime-B/C effort at the cursor-walk path, not at fact
+  construction.
 
 **Finding — no list-all bench variant.** "List all docs U can view"
 (unbound-O enumeration) is super-quadratic in org size: without tabling, the
