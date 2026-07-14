@@ -24,14 +24,21 @@ files, recomputes significance from the raw samples, and warns when the runs'
 environments differ:
 
 ```bash
-npm run bench -- bench/authz/bench-authz.js --json bench/authz/results/2026-07-14-baseline.json --label baseline -H
+npm run bench -- bench/authz/bench-authz.js -i 500 --json bench/authz/results/2026-07-14-baseline.json --label baseline -H
 npx nano-bench-compare bench/authz/results/2026-07-14-baseline.json bench/authz/results/<experiment>.json
 ```
 
-Saved runs live in `bench/<topic>/results/<YYYY-MM-DD>-<label>.json` (prettier
-the file after writing so `npm run lint` stays green). Baselines for the
-experiment benches are committed so before/after comparisons don't require
-re-measuring the "before".
+Recorded comparison runs must pin iterations (`-i 500` for the authz bench).
+Auto-calibration sizes the batch to the build's speed, and variants that cycle
+a query list with `i % length` then measure a build-dependent subset — a
+faster build would be judged on a different workload. Pinning `-i` fixes the
+workload across builds; `-i 500` covers each authz query bucket exactly once.
+
+Two more pairing rules: experiment bench files must export the **same variant
+names** as the baseline file (pairing is by name), and saved runs live in
+`bench/<topic>/results/<YYYY-MM-DD>-<label>.json` (prettier the file after
+writing so `npm run lint` stays green). Baselines are committed so before/after
+comparisons don't require re-measuring the "before".
 
 ## Conventions
 
@@ -39,6 +46,8 @@ re-measuring the "before".
 - ESM, `export default { variantA: n => {...}, variantB: n => {...} }`.
 - Each variant runs `for (let i = 0; i < n; ++i) { ... }`.
 - Setup outside the loop. Prevent dead-code elimination by returning the sink.
+- Smoke-test a new or changed bench module with `--smoke` (each variant once,
+  `n = 1`) before a full collection run.
 - Match yopl prettier style (single quotes, no bracket spacing, no trailing
   commas, arrow parens avoided).
 - `.claude/skills/{write-bench,write-watch}` are symlinks into

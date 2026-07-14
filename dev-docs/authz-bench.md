@@ -86,25 +86,28 @@ dominate nano-bench noise.
    native-dispatch cost) and, if needed, a precomputed-terms build (splits
    goal-construction from unify time).
 
-### Baseline (measured 2026-07-14, default org: 300 users / 40 groups / 1500 docs / 4000 tuples)
+### Baseline (measured 2026-07-14, default org: 300 users / 40 groups / 1500 docs / 4000 tuples, `-i 500`)
 
-| Variant        | Median  |
-| -------------- | ------- |
-| checkDirect    | 5.51 μs |
-| checkGroup     | 189 μs  |
-| checkInherited | 188 μs  |
-| checkImplied   | 353 μs  |
-| checkDenial    | 735 μs  |
-| checkMix       | 455 μs  |
+| Variant        | Median |
+| -------------- | ------ |
+| checkDirect    | 8.4 μs |
+| checkGroup     | 193 μs |
+| checkInherited | 194 μs |
+| checkImplied   | 368 μs |
+| checkDenial    | 868 μs |
+| checkMix       | 471 μs |
 
 The predicted shape holds: the ground-verify fast path makes direct grants
-~130× cheaper than denials, and the mix is dominated by denial backtracking —
+~100× cheaper than denials, and the mix is dominated by denial backtracking —
 exactly the hot proof loop the experiments target.
 
 The run is saved (raw samples + environment) at
 `bench/authz/results/2026-07-14-baseline.json`; judge the experiment variants
 against it with `nano-bench-compare` (see `bench/README.md` § Saving and
-comparing runs) instead of re-measuring the baseline.
+comparing runs) instead of re-measuring the baseline. Comparison runs pin
+`-i 500` — with auto-calibrated batches, the `i % length` query cycling would
+measure a build-dependent subset of the workload — and experiment bench files
+must export the same variant names so the comparison pairs them.
 
 **Finding — no list-all bench variant.** "List all docs U can view"
 (unbound-O enumeration) is super-quadratic in org size: without tabling, the
