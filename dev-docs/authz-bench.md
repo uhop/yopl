@@ -101,6 +101,11 @@ The predicted shape holds: the ground-verify fast path makes direct grants
 ~130× cheaper than denials, and the mix is dominated by denial backtracking —
 exactly the hot proof loop the experiments target.
 
+The run is saved (raw samples + environment) at
+`bench/authz/results/2026-07-14-baseline.json`; judge the experiment variants
+against it with `nano-bench-compare` (see `bench/README.md` § Saving and
+comparing runs) instead of re-measuring the baseline.
+
 **Finding — no list-all bench variant.** "List all docs U can view"
 (unbound-O enumeration) is super-quadratic in org size: without tabling, the
 inheritance clause re-proves each parent edge independently while per-object

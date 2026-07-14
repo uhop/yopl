@@ -16,6 +16,23 @@ variant.
 Common options: `--ms` (measurement time per variant), `--samples`,
 `--bootstrap`, `--alpha`. See `npx nano-bench --help`.
 
+### Saving and comparing runs
+
+Record a run as JSON with `--json` (plus `--label` and `-H` for the host), then
+compare runs with `nano-bench-compare` — it pairs same-named variants across
+files, recomputes significance from the raw samples, and warns when the runs'
+environments differ:
+
+```bash
+npm run bench -- bench/authz/bench-authz.js --json bench/authz/results/2026-07-14-baseline.json --label baseline -H
+npx nano-bench-compare bench/authz/results/2026-07-14-baseline.json bench/authz/results/<experiment>.json
+```
+
+Saved runs live in `bench/<topic>/results/<YYYY-MM-DD>-<label>.json` (prettier
+the file after writing so `npm run lint` stays green). Baselines for the
+experiment benches are committed so before/after comparisons don't require
+re-measuring the "before".
+
 ## Conventions
 
 - File name: `bench-<topic>.js`.
