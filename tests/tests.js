@@ -28,6 +28,7 @@ import unifyLPTests from './test-unify-lp.js';
 import lowerConstTests from './test-lower-const.js';
 import lowerJsrcTests from './test-lower-jsrc.js';
 import factSourceTests from './test-fact-source.js';
+import bridgeTests from './test-bridge.js';
 
 runAllTests([
   ...solveTests,
@@ -57,5 +58,6 @@ runAllTests([
   ...unifyLPTests,
   ...lowerConstTests,
   ...lowerJsrcTests,
-  ...factSourceTests
+  ...factSourceTests,
+  ...bridgeTests
 ]);

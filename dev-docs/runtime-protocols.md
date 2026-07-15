@@ -220,6 +220,42 @@ Instrument: `bench-inline-goals.js` (+ its jsrc sibling). The jsrc
 +14% captured only the walk share; the closure mint, record, and
 double probes are the unmeasured remainder.
 
+### Tier 1 + 3 results (measured 2026-07-14) — perf-neutral; keep as DX, redirect perf to tiers 2/4
+
+POC files: `src/rules/bridge.js` (+ `.d.ts`) — `deref`, `computes` /
+`verifies` (MISS sentinel), `reversible3` — `tests/test-bridge.js`,
+`bench/bench-inline-goals-bridge.js` (same add\* variant names +
+an in-file `sumList50_math` / `sumList50_bridge` depth pair). Saved
+run: `bench/results/2026-07-14-inline-goals-bridge.json`.
+
+Two findings, one trap and one refutation:
+
+- **The get-first deref trick pessimizes at depth.** A native's out-arg
+  is unbound on every call and misses every frame, so `get` +
+  confirming `isBound` is two full O(depth) walks vs the idiom's one —
+  measured **−6%** on `sumList50` (add at recursion depth ~50). Fixed
+  with a true single-walk lookup (`has` per frame, `get` on the hit
+  frame, sentinel on miss) against EnvMap's plain-field internals with
+  a public-API fallback; that restores **parity** at depth — not a
+  win, because the unbound miss costs one full walk under any idiom.
+  The reach-in belongs in deep6 as `env.lookup(name, miss)` — worth
+  landing for decoupling, not for speed.
+- **Probe-halving doesn't pay.** Freshly-minted clause variables bind
+  in top frames, so bound-input reads hit shallow either way;
+  `reversible3` measured **3–6% slower** than `reversibleTernary` on
+  the shallow add workloads (small effect sizes — the deref/instanceof
+  indirection costs about what the saved probes were worth). Meanwhile
+  the jsrc recording stays **18–21% ahead of both**: on the js-goal
+  path the IR walk and the per-activation ceremony dominate; env
+  probes don't.
+
+Verdict: keep `deref` / `computes` / `verifies` as the bridge's DX
+layer (one audited implementation, MISS-sentinel domain failures,
+fewer hand-rolled isBound/get towers) — do **not** promote
+`reversible3` as a perf replacement. The bridge's real perf levers are
+tier 2 (static-native shape — kill the factory closure + vars record;
+needs the driver-twin experiment) and tier 4 (fused jsrc emission).
+
 **Note:** binding goals keep `env.push()` — backtracking must undo
 bindings; that's correctness. Only declared-pure tests may skip it
 (rider 2 below).
