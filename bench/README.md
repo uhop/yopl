@@ -66,6 +66,7 @@ comparisons don't require re-measuring the "before".
 | `bench-parity-jsrc.js`       | `bench-parity.js` encodings + `_jsrc` (regime-B `lower-jsrc.js`)              | Five-way parity: `_jsrc` vs `_codegen` validates the emitter against the hand-written prediction; `_jsrc` vs `_clause` isolates the codegen win. See `dev-docs/js-source-backend.md` § POC results.           |
 | `bench-proof-loop-jsrc.js`   | `bench-proof-loop.js` workloads via `src/compile/lower-jsrc.js`               | Regime-B experiment; same variant names — pair against a saved `bench-proof-loop.js` run. The baseline hand-writes its rules (wildcard cheat), so this pairing measures compiled-vs-hand, not lowering alone. |
 | `bench-inline-goals-jsrc.js` | `bench-inline-goals.js` via `lower-jsrc.js`                                   | Regime-B on the `js`-goal factory path; same variant names — pair against a saved `bench-inline-goals.js` run.                                                                                                |
+| `authz/bench-authz-fs.js`    | `bench-authz.js` op mix via fact-source natives (`rules-fs.js`)               | Workstream-1 POC (dev-docs/runtime-protocols.md): choice-point enumeration replacing the cons-list walk; same org, queries, and variant names — pair against a same-HEAD authz baseline (`-i 500`).           |
 
 The `-lp` sibling benches were removed 2026-07-14 when the LP-specialized
 unifier was promoted to the solvers' default — `bench-proof-loop.js` and

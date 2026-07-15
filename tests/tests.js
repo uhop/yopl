@@ -27,6 +27,7 @@ import authzTests from './test-authz.js';
 import unifyLPTests from './test-unify-lp.js';
 import lowerConstTests from './test-lower-const.js';
 import lowerJsrcTests from './test-lower-jsrc.js';
+import factSourceTests from './test-fact-source.js';
 
 runAllTests([
   ...solveTests,
@@ -55,5 +56,6 @@ runAllTests([
   ...authzTests,
   ...unifyLPTests,
   ...lowerConstTests,
-  ...lowerJsrcTests
+  ...lowerJsrcTests,
+  ...factSourceTests
 ]);
