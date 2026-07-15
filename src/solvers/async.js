@@ -1,6 +1,7 @@
 // @ts-self-types="./async.d.ts"
-import unify, {variable} from 'deep6/unify.js';
+import {variable} from 'deep6/env.js';
 import {EnvMap} from 'deep6/env-map.js';
+import {unifyLP} from '../unify-lp.js';
 
 let counter = 0;
 const generateVariables = count => {
@@ -26,7 +27,7 @@ const prove = async (rules, goals, env) => {
           vars = generateVariables(rule.length + 1),
           terms = (typeof rule == 'function' ? rule : rule.goals)(...vars);
         env.push();
-        if (unify(terms[0].args || NO_ARGS, frame.args, env)) {
+        if (unifyLP(terms[0].args || NO_ARGS, frame.args, env)) {
           // restoreParent stamps the post-call position of the outer
           // goals onto the new sub-goals. When the proof later walks
           // up via .next, the outer's index is reset to this value —

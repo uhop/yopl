@@ -1,17 +1,14 @@
 // Cross-validation for the LP-specialized unifier: unit-level parity with
 // deep6 unify under solver options (incl. the openObjects intersection
-// semantics and delegation cases), plus solver-level parity — classic
-// fixtures through solve vs solve-lp, and the authz workload through
-// gen vs gen-lp.
+// semantics and delegation cases), plus solver-level checks — classic
+// fixtures and the authz oracle through the unifyLP-backed solvers.
 
 import unify, {variable as v, open} from 'deep6/unify.js';
 import {EnvMap} from 'deep6/env-map.js';
 import assemble from 'deep6/traverse/assemble.js';
 import {unifyLP} from '../src/unify-lp.js';
 import solve from '../src/solve.js';
-import solveLP from '../src/solve-lp.js';
 import gen from '../src/solvers/gen.js';
-import genLP from '../src/solvers/gen-lp.js';
 import {TupleStore, groupKey} from '../bench/authz/model.js';
 import {makeRules} from '../bench/authz/rules.js';
 import {generateOrg} from '../bench/authz/gen.js';
@@ -101,22 +98,14 @@ export default [
     eval(TEST("unifyLP({name: 'group', args: [X]}, {name: 'group', args: ['g7']}, env)"));
     eval(TEST("X.get(env) === 'g7'"));
   },
-  function test_solve_lp_member_append_parity() {
-    const runSolve = (driver, rules, name, args) => {
-      const result = [];
-      driver(rules, name, args, env => result.push(assemble(wanted, env)));
-      return result;
-    };
+  function test_solve_lp_member_append() {
     const wanted = v('X');
-    const base = runSolve(solve, memberRules, 'member', [makeList([1, 2, 3]), wanted]);
-    const lp = runSolve(solveLP, memberRules, 'member', [makeList([1, 2, 3]), wanted]);
-    eval(TEST('unify(base, lp)'));
-    eval(TEST('unify(lp, [1, 2, 3])'));
-    let baseCount = 0,
-      lpCount = 0;
-    solve(appendRules, 'append', [v('A'), v('B'), makeList([1, 2, 3, 4])], () => ++baseCount);
-    solveLP(appendRules, 'append', [v('A'), v('B'), makeList([1, 2, 3, 4])], () => ++lpCount);
-    eval(TEST('baseCount === 5 && lpCount === 5'));
+    const result = [];
+    solve(memberRules, 'member', [makeList([1, 2, 3]), wanted], env => result.push(assemble(wanted, env)));
+    eval(TEST('unify(result, [1, 2, 3])'));
+    let count = 0;
+    solve(appendRules, 'append', [v('A'), v('B'), makeList([1, 2, 3, 4])], () => ++count);
+    eval(TEST('count === 5'));
   },
   function test_gen_lp_authz_small_org() {
     const store = new TupleStore();
@@ -126,14 +115,14 @@ export default [
     store.addTuple('doc1', 'owner', 'alice');
     store.addTuple('root', 'viewer', groupKey('staff'));
     const rules = makeRules(store);
-    const can = (driver, user, rel, obj) => !driver(rules, 'check', [user, rel, obj]).next().done;
-    eval(TEST("can(genLP, 'alice', 'owner', 'doc1')"));
-    eval(TEST("can(genLP, 'alice', 'viewer', 'doc1')"));
-    eval(TEST("can(genLP, 'alice', 'viewer', 'root')"));
-    eval(TEST("!can(genLP, 'alice', 'editor', 'root')"));
-    eval(TEST("!can(genLP, 'bob', 'viewer', 'doc1')"));
+    const can = (user, rel, obj) => !gen(rules, 'check', [user, rel, obj]).next().done;
+    eval(TEST("can('alice', 'owner', 'doc1')"));
+    eval(TEST("can('alice', 'viewer', 'doc1')"));
+    eval(TEST("can('alice', 'viewer', 'root')"));
+    eval(TEST("!can('alice', 'editor', 'root')"));
+    eval(TEST("!can('bob', 'viewer', 'doc1')"));
   },
-  function test_gen_lp_authz_cross_validation() {
+  function test_gen_lp_authz_oracle() {
     const org = generateOrg({
       users: 60,
       groups: 10,
@@ -145,9 +134,8 @@ export default [
     const rules = makeRules(org.store);
     let mismatches = 0;
     for (const query of org.mixed) {
-      const base = !gen(rules, 'check', [query.u, query.r, query.o]).next().done;
-      const lp = !genLP(rules, 'check', [query.u, query.r, query.o]).next().done;
-      if (base !== lp || lp !== query.expect) ++mismatches;
+      const verdict = !gen(rules, 'check', [query.u, query.r, query.o]).next().done;
+      if (verdict !== query.expect) ++mismatches;
     }
     eval(TEST('mismatches === 0'));
   }

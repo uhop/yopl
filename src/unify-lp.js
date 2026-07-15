@@ -1,22 +1,20 @@
 // @ts-self-types="./unify-lp.d.ts"
 //
-// LP-specialized unifier — the "cheapest experiment" in the regime-C space
-// (dev-docs/js-source-backend.md); judged on dev-docs/authz-bench.md.
+// LP-specialized unifier — the solvers' default since 2026-07-14 (GO on
+// dev-docs/authz-bench.md § Measurements: ~1.26× end-to-end authz mix,
+// +12–31% classic workloads).
 // Fast-paths only the shapes lowered rules produce — Variables, primitives,
 // cons cells, compounds, arrays, plain objects under openObjects semantics.
-// Everything else (wrapped/custom Unifiers, non-plain prototypes, exotic env
-// options, registered filters) delegates to deep6's general unify. Bindings
-// go through the same Env API, so envs stay interchangeable with the
-// baseline solvers.
+// Shapes outside that set (wrapped/custom Unifiers, non-plain prototypes)
+// delegate to deep6's general unify. Always on — no per-env fallback: the
+// drivers construct their own envs (openObjects only), and deep6 unify
+// filters are not honored in head unification (2026-07-14). Bindings go
+// through the same Env API, so envs stay interchangeable across unifiers.
 
 import unify from 'deep6/unify.js';
 import {Variable, Unifier, _} from 'deep6/env.js';
 
 const hasOwn = Object.prototype.hasOwnProperty;
-
-// the exact option set the yopl solver drivers run under
-const lpOptions = o =>
-  o.openObjects === true && !o.openArrays && !o.openMaps && !o.openSets && !o.circular && !o.loose && !o.signedZero && !o.symbols && !o.ignoreFunctions;
 
 // Recursive, not worklist-based: pattern sides are clause heads with bounded
 // depth, and data-vs-data descent stops at the first Variable.
@@ -74,18 +72,7 @@ const u = (l, r, env) => {
   return true;
 };
 
-// per-env verdict cache: drivers reuse one env for a whole proof
-let lastEnv = null,
-  lastLP = false;
-
-const unifyLP = (l, r, env) => {
-  if (env !== lastEnv) {
-    lastEnv = env;
-    lastLP = lpOptions(env.options);
-  }
-  if (!lastLP || unify.filters.length) return unify(l, r, env) !== null;
-  return u(l, r, env);
-};
+const unifyLP = u;
 
 export default unifyLP;
 export {unifyLP};

@@ -56,15 +56,18 @@ comparisons don't require re-measuring the "before".
 
 ## Current targets
 
-| File                      | Compares                                                                      | Notes                                                                                                                                                                                                        |
-| ------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `bench-proof-loop.js`     | member contains-last / enumerate-all / append-split                           | Core solver workload — head unification, choice-point allocation, recursive descent.                                                                                                                         |
-| `bench-drivers.js`        | sync callback / sync gen / async callback / async gen                         | Take-1 over `member` — surfaces driver overhead vs the proof loop.                                                                                                                                           |
-| `bench-inline-goals.js`   | math.add forward / reverse / verify                                           | Reversible-operator path — `isBound` probe + `bindVal` + `cut(sys)` across all three argument shapes.                                                                                                        |
-| `bench-parity.js`         | hand-written / `clause\`...\``/`prolog\`...\``                                | Same `member`/`append` workload through all three encodings. Detects per-encoding regressions in `lower.js` or front-end IR shape divergence; clause and prolog should sit within bench noise of each other. |
-| `authz/bench-authz.js`    | Zanzibar-style check mix: direct / group / implied / inherited / denial / mix | The judge workload for solver experiments — facts behind native predicates (FFI), policy as clauses; denial backtracking dominates the realistic mix. See `dev-docs/authz-bench.md`.                         |
-| `bench-proof-loop-lp.js`  | `bench-proof-loop.js` workloads via `src/solve-lp.js`                         | LP-specialized-unifier experiment; same variant names — record with `--json` and pair against a saved `bench-proof-loop.js` run via `nano-bench-compare`.                                                    |
-| `authz/bench-authz-lp.js` | `bench-authz.js` op mix via `src/solvers/gen-lp.js`                           | LP-specialized-unifier experiment on the judge workload; same org, queries, and variant names — pair against the saved authz baseline (`-i 500`).                                                            |
+| File                    | Compares                                                                      | Notes                                                                                                                                                                                                        |
+| ----------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `bench-proof-loop.js`   | member contains-last / enumerate-all / append-split                           | Core solver workload — head unification, choice-point allocation, recursive descent.                                                                                                                         |
+| `bench-drivers.js`      | sync callback / sync gen / async callback / async gen                         | Take-1 over `member` — surfaces driver overhead vs the proof loop.                                                                                                                                           |
+| `bench-inline-goals.js` | math.add forward / reverse / verify                                           | Reversible-operator path — `isBound` probe + `bindVal` + `cut(sys)` across all three argument shapes.                                                                                                        |
+| `bench-parity.js`       | hand-written / `clause\`...\``/`prolog\`...\``                                | Same `member`/`append` workload through all three encodings. Detects per-encoding regressions in `lower.js` or front-end IR shape divergence; clause and prolog should sit within bench noise of each other. |
+| `authz/bench-authz.js`  | Zanzibar-style check mix: direct / group / implied / inherited / denial / mix | The judge workload for solver experiments — facts behind native predicates (FFI), policy as clauses; denial backtracking dominates the realistic mix. See `dev-docs/authz-bench.md`.                         |
+
+The `-lp` sibling benches were removed 2026-07-14 when the LP-specialized
+unifier was promoted to the solvers' default — `bench-proof-loop.js` and
+`authz/bench-authz.js` now measure it directly. Saved pre-promotion runs
+remain under `results/` for pairing via `nano-bench-compare`.
 
 ## Reading `bench-parity.js`
 

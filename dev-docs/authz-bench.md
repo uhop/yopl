@@ -143,6 +143,11 @@ than reversed `Object.keys` on member workloads.
 Saved runs: `bench/authz/results/2026-07-14-lp-unifier.json`,
 `bench/results/2026-07-14-proof-loop-{baseline,lp}.json`.
 
+**Promoted 2026-07-14.** `unifyLP` is now the inner unify of all four solver
+drivers; the `solve-lp.js` / `gen-lp.js` twins and the `-lp` sibling benches
+are gone. Only `src/unify-lp.js` remains of the experiment files, and the
+baseline benches measure it directly.
+
 ### +B′ (measured 2026-07-14) — retired, prediction confirmed
 
 Artifacts per implementation-discipline.md: the ~40-line classifier
