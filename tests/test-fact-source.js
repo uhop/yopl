@@ -8,8 +8,10 @@
 import {variable as v} from 'deep6/unify.js';
 import assemble from 'deep6/traverse/assemble.js';
 import {rule, clause} from '../src/compile/clause.js';
+import {prolog} from '../src/compile/prolog/index.js';
 import {lowerRules} from '../src/compile/lower.js';
 import {factSource, factThunk} from '../src/rules/fact-source.js';
+import {makeNativesFS} from '../bench/authz/model-fs.js';
 import solve from '../src/solve.js';
 import gen from '../src/solvers/gen.js';
 import {TupleStore, groupKey} from '../bench/authz/model.js';
@@ -127,5 +129,24 @@ export default [
       if (fsVerdict !== query.expect || baseVerdict !== fsVerdict) ++mismatches;
     }
     eval(TEST('mismatches === 0'));
+  },
+  function test_fact_source_cut_commits_store_order() {
+    // cut selects WHICH fact wins by enumeration order — over a store-backed
+    // source it must commit to the first-added fact, matching the same facts
+    // declared as clauses (the legacy cons-list scan would commit to the
+    // last-added: it prepends while scanning)
+    const store = new TupleStore();
+    store.addTuple('doc', 'viewer', 'alice');
+    store.addTuple('doc', 'viewer', 'bob');
+    store.addTuple('doc', 'editor', 'carol');
+    const n = makeNativesFS(store);
+    const rules = prolog`
+      firstViewer(O, S) :- tuple(O, "viewer", S), !.
+      tuple(O, R, S) :- ${n.tupleGround}, !, ${n.tupleCheck}.
+      tuple(O, R, S) :- ${n.tupleFacts}.
+    `;
+    const S = v('S');
+    eval(TEST("collect(rules, 'firstViewer', ['doc', S], [S]) === 'alice'"));
+    eval(TEST("count(rules, 'firstViewer', ['doc', S]) === 1"));
   }
 ];

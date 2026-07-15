@@ -13,6 +13,16 @@
 // array (share-safe per the B′ finding — bindings land in the env, the
 // goals cursor lives on the frame). Return null / empty list to fail.
 //
+// Enumeration order is part of the contract, not a nicety: candidates are
+// tried in `list` order (the command-2 frame walks ruleList front to back),
+// and cut / first-solution semantics select WHICH fact wins by it. Users
+// write standard Prolog; the obligation is the implementor's — the store
+// defines one total fact order (addTuple-chronological is the least
+// surprise, mirroring assertz) and EVERY list it hands out — bucketed,
+// filtered, flattened — must project that order. The cons-list cursor
+// idiom this replaces prepends while scanning and thus enumerates
+// reversed — a pre-existing, unspecified deviation.
+//
 // Returns false, never null: the pull drivers yield a solution on a null
 // goals chain (`!goals` IS the proof-complete signal in gen/asyncGen), so
 // the `return null` path's dead-end `{goals: null}` frame reads as one

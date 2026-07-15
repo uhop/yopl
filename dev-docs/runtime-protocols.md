@@ -75,6 +75,38 @@ return false;
   choice point exactly like a clause list. `halt` splices the whole
   stack. `restoreIndex: goals.index` matches the drivers' own
   stamping, so backtrack-rematch restores correctly.
+- **Enumeration order is the contract, not a nicety**: cut and
+  first-solution pulls (`gen().next()`) select _which_ fact wins by
+  it. Two levels:
+  - **User-facing: none.** Programs use `!`, `once`-style commits, and
+    backtracking exactly as over declared fact clauses — a fact-source
+    predicate must be behaviorally indistinguishable from the same
+    facts written as clauses. Any note telling users "don't rely on
+    cut over native facts" would mean this design failed.
+  - **Implementor-facing:** the store defines ONE total fact order
+    (the FFI analog of clause order; `addTuple`-chronological is the
+    least-surprise choice, mirroring `assertz`), and every candidate
+    list handed to the engine — bucketed, filtered, flattened,
+    over-approximate — must project that same order. The engine
+    enumerates in `list` order (the command-2 frame walks `ruleList`
+    front to back), so the arrays carry the semantics.
+
+  POC status: `TupleStore`'s nested Map/Set structure defines a
+  _grouped_ order (object → relation → subject insertion; within an
+  (obj, rel) bucket = `addTuple` order); all `model-fs.js` index paths
+  project it consistently, and
+  `test_fact_source_cut_commits_store_order` pins the bucket case
+  end-to-end (cut over a store-backed source commits to the
+  first-added fact, one survivor). True `addTuple` chronology _across_
+  buckets needs a per-fact sequence number — a promotion-time
+  store-API decision. The legacy cons-list idiom _prepends_ while
+  scanning and enumerates in reverse insertion order — never
+  specified, and cut over it commits to the _last_-added fact — so
+  promotion is an observable behavior change for order-sensitive
+  programs, in favor of declared-facts semantics. The authz verdicts
+  are immune (existence checks; its only cut guards the ground fast
+  path rather than selecting among candidates), which is why both
+  variants pass the oracle without pinning an order.
 
 **Zero engine changes** — expressible today in all four drivers (their
 js-goal branches are identical). Per candidate the cost drops to one
