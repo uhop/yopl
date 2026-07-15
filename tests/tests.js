@@ -26,6 +26,7 @@ import sudokuTests from './test-sudoku.js';
 import authzTests from './test-authz.js';
 import unifyLPTests from './test-unify-lp.js';
 import lowerConstTests from './test-lower-const.js';
+import lowerJsrcTests from './test-lower-jsrc.js';
 
 runAllTests([
   ...solveTests,
@@ -53,5 +54,6 @@ runAllTests([
   ...sudokuTests,
   ...authzTests,
   ...unifyLPTests,
-  ...lowerConstTests
+  ...lowerConstTests,
+  ...lowerJsrcTests
 ]);

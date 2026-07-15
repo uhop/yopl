@@ -428,6 +428,60 @@ no edits to `lower.js`.
 Estimated POC effort: 1-2 days. No new dependencies. No new
 toolchain. The bench scaffold already exists.
 
+## POC results (measured 2026-07-14) — gate 3, roughly neutral
+
+Ran post-LP-unifier-promotion (`unifyLP` default in all four drivers
+since `3fb9de8`, which shrank every cost the construction walk competes
+against). POC files per implementation-discipline.md:
+`src/compile/lower-jsrc.js` (+ `.d.ts`), cross-validation
+`tests/test-lower-jsrc.js` (incl. the aliasing bail-to-closure path),
+benches `bench/bench-parity-jsrc.js`, `bench/bench-proof-loop-jsrc.js`,
+`bench/bench-inline-goals-jsrc.js`. Baselines untouched. Saved runs:
+`bench/results/2026-07-14-{parity-jsrc,proof-loop-postlp,proof-loop-jsrc,inline-goals-postlp,inline-goals-jsrc}.json`.
+
+**The emitter is optimal for its shape — the shape just doesn't buy
+multiples.** `_jsrc` is statistically indistinguishable from
+`_codegen` (the hand-written prediction of ideal codegen output) on
+every parity workload, so the numbers below are regime B's ceiling on
+these workloads, not implementation slack:
+
+| Comparison (medians)   | member50 | member50enum | member200 | append10 |
+| ---------------------- | -------- | ------------ | --------- | -------- |
+| `_jsrc` over `_clause` | +9.6%    | +4.1%        | +4.7%     | +11.9%   |
+| `_jsrc` vs `_codegen`  | ≈ (n.s.) | ≈ (n.s.)     | ≈ (n.s.)  | ≈ (n.s.) |
+| `_hand` over `_jsrc`   | +12.9%   | +10.8%       | +23.5%    | ≈ (n.s.) |
+
+- **inline-goals (js-factory-heavy math rules): jsrc +14%** on all
+  three variants — the biggest single win, matching prediction
+  (§ Where the savings live, item 3).
+- **append10: jsrc lands on the hand-written floor** (n.s. vs
+  `_hand`) — the predicted ~100% gap close for wildcard-free rules.
+- **member: the residual `_hand` lead is the wildcard cheat**
+  (`{next: X}` vs `{value: variable(), next: X}`), now the dominant
+  compiler-overhead term post-LP — unify got cheaper, the wildcard
+  Variable allocation didn't. Recovering it needs match-vs-construct
+  mode analysis (emit the property-omitting form only for
+  match-position conses) — the one codegen-level lever left,
+  deliberately out of POC scope.
+
+Open questions answered en route: `new Function`-emitted arrows tier
+up normally (they match equivalent hand-written closures exactly); the
+factory-reference problem is solved by the
+`new Function('H', 'C', src)(HELPERS, consts)` wrapper — the returned
+arrow closes over the helper/consts tables at compile time with no
+measurable cost; `//# sourceURL=yopl-jsrc/<rule>.<i>` is emitted for
+stack attribution. Incidental repair: `bench-parity.js` still imported
+`compile/clause/index.js` (missed by the 2026-07-13 flattening —
+benches aren't in the test matrix); fixed to `compile/clause.js`.
+
+Per the decision gates: nowhere near 1.5× → no default swap, no opt-in
+target. The negative-ish result stands as regime B's measured ceiling:
+**the per-activation IR walk costs 4–12% end-to-end on classic
+workloads (14% on js-goal-heavy rules), not multiples.** What remains
+is proof-loop + unify + choice-point domain — regime C's turf, per the
+gate-3 reroute below. The WASM POC's boundary question is independent
+and unaffected.
+
 ## Open questions for the POC to answer
 
 - Does the in-memory code cache work for `new Function`? Calling

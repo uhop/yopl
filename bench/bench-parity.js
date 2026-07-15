@@ -48,7 +48,7 @@
 
 import {variable, variable as v} from 'deep6/env.js';
 import solve from '../src/solve.js';
-import {rule, clause} from '../src/compile/clause/index.js';
+import {rule, clause} from '../src/compile/clause.js';
 import {lowerRules} from '../src/compile/lower.js';
 import {prolog} from '../src/compile/prolog/index.js';
 
